@@ -4,6 +4,7 @@
 /tmp/
 /public/phpmyadmin/
 config/config.php
+*.sql
 *.log
 .DS_Store
 Thumbs.db
