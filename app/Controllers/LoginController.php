@@ -12,7 +12,7 @@ class LoginController extends Controller
     public function index(): void
     {
         if (isset($_SESSION['usuario'])) {
-            header('Location: /admin');
+            header('Location: /admin/dashboard');
             return;
         }
         $this->view('login/index', ['title' => 'Login - Admin'], 'none');
@@ -122,7 +122,7 @@ class LoginController extends Controller
         $_SESSION['usuario'] = $user['name'];
         $_SESSION['usuario_id'] = $user['id'];
         $_SESSION['is_admin'] = (bool) $user['is_admin'];
-        header('Location: /admin');
+        header('Location: /admin/dashboard');
     }
 
     public function logout(): void

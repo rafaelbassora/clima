@@ -44,6 +44,31 @@ class AdminController extends Controller
         $this->db = $GLOBALS['db'];
     }
 
+    public function dashboard(): void
+    {
+        $nowcastStats = $this->leituraModel->getNowcastingStats();
+        $geral = $nowcastStats['geral'] ?? [];
+        $totalPrevisoes = (int) ($geral['total'] ?? 0);
+        $acertos = (int) ($geral['acertos'] ?? 0);
+        $acuracia = $totalPrevisoes > 0 ? round(($acertos / $totalPrevisoes) * 100, 1) : null;
+
+        $pendentes = $this->cidadaoModel->getPendentes();
+
+        $this->view('admin/dashboard', [
+            'title' => 'Dashboard',
+            'activeMenu' => 'dashboard',
+            'totalUsuarios' => count($this->userModel->getAll()),
+            'totalCidadaosPendentes' => count($pendentes),
+            'totalEstacoesAprovadas' => count($this->cidadaoModel->getAprovados()),
+            'totalChuvasManuais' => $this->model->countAll(),
+            'totalAlertasAtivos' => count($this->alertaModel->getAtivos()),
+            'totalNoticias' => count($this->noticiaModel->getAll(false)),
+            'acuraciaNowcasting' => $acuracia,
+            'cidadaosPendentesRecentes' => array_slice($pendentes, 0, 5),
+            'correcoesRecentes' => array_slice($this->chuvaCorrecaoModel->getAll(), 0, 5),
+        ], 'admin');
+    }
+
     public function index(): void
     {
         $page = (int)$this->getParam('page', 1);
@@ -54,6 +79,7 @@ class AdminController extends Controller
         $pages = ceil($total / $perPage);
 
         $this->view('admin/index', [
+            'activeMenu' => 'chuvas',
             'title'   => 'Admin - Chuvas Manuais',
             'dados'   => $dados,
             'page'    => $page,
@@ -78,7 +104,7 @@ class AdminController extends Controller
             header('Location: /admin');
             return;
         }
-        $this->view('admin/form', ['title' => 'Nova Chuva Manual'], 'admin');
+        $this->view('admin/form', ['title' => 'Nova Chuva Manual', 'activeMenu' => 'chuvas'], 'admin');
     }
 
     public function edit(): void
@@ -126,6 +152,7 @@ class AdminController extends Controller
     {
         $dados = $this->alertaModel->getAll();
         $this->view('admin/alertas/index', [
+            'activeMenu' => 'alertas',
             'title' => 'Gerenciar Alertas',
             'dados' => $dados
         ], 'admin');
@@ -146,7 +173,7 @@ class AdminController extends Controller
             header('Location: /admin/alertas');
             return;
         }
-        $this->view('admin/alertas/form', ['title' => 'Novo Alerta'], 'admin');
+        $this->view('admin/alertas/form', ['title' => 'Novo Alerta', 'activeMenu' => 'alertas'], 'admin');
     }
 
     public function alertaEdit(): void
@@ -193,6 +220,7 @@ class AdminController extends Controller
     {
         $dados = $this->noticiaModel->getAll(false); // Pega inclusive inativas
         $this->view('admin/noticias/index', [
+            'activeMenu' => 'noticias',
             'title' => 'Gerenciar Notícias',
             'dados' => $dados
         ], 'admin');
@@ -217,7 +245,7 @@ class AdminController extends Controller
             header('Location: /admin/noticias');
             return;
         }
-        $this->view('admin/noticias/form', ['title' => 'Nova Notícia'], 'admin');
+        $this->view('admin/noticias/form', ['title' => 'Nova Notícia', 'activeMenu' => 'noticias'], 'admin');
     }
 
     public function noticiaEdit(): void
@@ -316,6 +344,7 @@ class AdminController extends Controller
         );
 
         $this->view('admin/nowcasting', [
+            'activeMenu' => 'nowcasting',
             'title' => 'Estatísticas de Nowcasting',
             'stats' => $stats,
             'historico' => $historico
@@ -328,6 +357,7 @@ class AdminController extends Controller
     {
         $dados = $this->userModel->getAll();
         $this->view('admin/usuarios/index', [
+            'activeMenu' => 'usuarios',
             'title' => 'Gerenciar Usuários',
             'dados' => $dados
         ], 'admin');
@@ -351,7 +381,7 @@ class AdminController extends Controller
             header('Location: /admin/usuarios');
             return;
         }
-        $this->view('admin/usuarios/form', ['title' => 'Novo Usuário'], 'admin');
+        $this->view('admin/usuarios/form', ['title' => 'Novo Usuário', 'activeMenu' => 'usuarios'], 'admin');
     }
 
     public function usuarioEdit(): void
@@ -427,6 +457,7 @@ class AdminController extends Controller
     {
         $dados = $this->chuvaCorrecaoModel->getAll();
         $this->view('admin/chuva-automatica/index', [
+            'activeMenu' => 'chuva-automatica',
             'title' => 'Corrigir Chuva Automática',
             'dados' => $dados
         ], 'admin');
@@ -465,7 +496,7 @@ class AdminController extends Controller
         $user = $this->userModel->getById((int) $_SESSION['usuario_id']);
 
         if (!empty($user['totp_enabled'])) {
-            $this->view('admin/2fa', ['title' => 'Autenticação em Duas Etapas', 'ativado' => true], 'admin');
+            $this->view('admin/2fa', ['title' => 'Autenticação em Duas Etapas', 'ativado' => true, 'activeMenu' => '2fa'], 'admin');
             return;
         }
 
@@ -521,6 +552,7 @@ class AdminController extends Controller
     public function cidadaos(): void
     {
         $this->view('admin/cidadaos/index', [
+            'activeMenu' => 'cidadaos',
             'title' => 'Pluviômetro Cidadão - Moderação',
             'pendentes' => $this->cidadaoModel->getPendentes(),
             'aprovados' => $this->cidadaoModel->getAprovados(),

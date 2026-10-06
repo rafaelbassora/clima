@@ -115,6 +115,7 @@ $router->post('/login/redefinir-senha', 'LoginController',    'redefinirSenhaSal
 $router->get('/logout',             'LoginController',        'logout');
 
 // Admin
+$router->get('/admin/dashboard',    'AdminController',        'dashboard');
 $router->get('/admin',              'AdminController',        'index');
 $router->get('/admin/add',          'AdminController',        'add');
 $router->post('/admin/add',         'AdminController',        'add');
