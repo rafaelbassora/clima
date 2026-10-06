@@ -6,7 +6,7 @@
 <div class="row align-items-center mb-4 g-3">
     <div class="col-md-6">
         <h4 class="mb-0"><i class="bi bi-umbrella-fill text-primary"></i> Previsão do Tempo</h4>
-        <small class="text-muted">Dados fornecidos pelo CPTEC/INPE ou INMET</small>
+        <small class="text-muted">Dados fornecidos pelo <?= htmlspecialchars($previsoes[0]['fonte'] ?? 'CPTEC/INPE') ?></small>
     </div>
     <div class="col-md-6 text-md-end">
         <?php if (!empty($previsoes)): ?>

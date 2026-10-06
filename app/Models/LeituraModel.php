@@ -1105,7 +1105,8 @@ class LeituraModel
             'temp_max' => $p['maxima'],
             'temp_min' => $p['minima'],
             'texto' => $condition['description'],
-            'icon' => $condition['icon']
+            'icon' => $condition['icon'],
+            'fonte' => $p['fonte'] ?? 'CPTEC/INPE',
         ];
     }
 

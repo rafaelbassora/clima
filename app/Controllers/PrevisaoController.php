@@ -45,6 +45,7 @@ class PrevisaoController extends Controller
                 'tempo'      => $condition['description'],
                 'icon'       => $condition['icon'],
                 'cidade'     => $p['cidade'] ?? '',
+                'fonte'      => $p['fonte'] ?? 'CPTEC/INPE',
                 'atualizado' => isset($p['atualizacao']) ? date('d/m/Y H:i', strtotime($p['atualizacao'])) : ''
             ];
         }
