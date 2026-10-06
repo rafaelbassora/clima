@@ -3,6 +3,8 @@
 namespace App\Controllers;
 
 use Core\Controller;
+use App\Models\UserModel;
+use App\Services\TotpService;
 
 class LoginController extends Controller
 {
@@ -62,18 +64,64 @@ class LoginController extends Controller
             return;
         }
 
-        // 2. Autenticação
-        $adminUsuario = $this->config['admin']['usuario'] ?? null;
-        $adminSenha = $this->config['admin']['senha'] ?? null;
-        if ($adminUsuario && $usuario === $adminUsuario && $senha === $adminSenha) {
-            $_SESSION['usuario'] = $adminUsuario;
-            header('Location: /admin');
-        } else {
+        // 2. Autenticação contra a tabela usuarios
+        $user = (new UserModel())->findByEmail($usuario);
+        if (!$user || !password_verify($senha, $user['password'])) {
             $this->view('login/index', [
                 'title' => 'Login - Admin',
                 'error' => 'Usuário ou senha inválidos.'
             ], 'none');
+            return;
         }
+
+        // 3. Se o usuário tiver 2FA ativado, exige o código antes de abrir a sessão
+        if (!empty($user['totp_enabled']) && !empty($user['totp_secret'])) {
+            $_SESSION['2fa_pending_id'] = $user['id'];
+            header('Location: /login/2fa');
+            return;
+        }
+
+        $this->iniciarSessao($user);
+    }
+
+    public function twofa(): void
+    {
+        if (!isset($_SESSION['2fa_pending_id'])) {
+            header('Location: /login');
+            return;
+        }
+        $this->view('login/2fa', ['title' => 'Verificação em Duas Etapas'], 'none');
+    }
+
+    public function twofaVerify(): void
+    {
+        if (!isset($_SESSION['2fa_pending_id'])) {
+            header('Location: /login');
+            return;
+        }
+
+        $userId = (int) $_SESSION['2fa_pending_id'];
+        $user = (new UserModel())->getById($userId);
+        $codigo = $_POST['codigo'] ?? '';
+
+        if ($user && !empty($user['totp_secret']) && (new TotpService())->verifyCode($user['totp_secret'], $codigo)) {
+            unset($_SESSION['2fa_pending_id']);
+            $this->iniciarSessao($user);
+            return;
+        }
+
+        $this->view('login/2fa', [
+            'title' => 'Verificação em Duas Etapas',
+            'error' => 'Código inválido ou expirado.'
+        ], 'none');
+    }
+
+    private function iniciarSessao(array $user): void
+    {
+        $_SESSION['usuario'] = $user['name'];
+        $_SESSION['usuario_id'] = $user['id'];
+        $_SESSION['is_admin'] = (bool) $user['is_admin'];
+        header('Location: /admin');
     }
 
     public function logout(): void

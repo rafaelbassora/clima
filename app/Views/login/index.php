@@ -56,8 +56,8 @@
 
     <form action="/login" method="POST" id="loginForm">
         <div class="mb-3">
-            <label class="form-label small fw-bold">Usuário</label>
-            <input type="text" name="usuario" class="form-control" required autofocus>
+            <label class="form-label small fw-bold">E-mail</label>
+            <input type="email" name="usuario" class="form-control" required autofocus>
         </div>
         <div class="mb-4">
             <label class="form-label small fw-bold">Senha</label>

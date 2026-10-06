@@ -44,6 +44,11 @@
     </div>
 </div>
 
+<div class="alert alert-info small py-2 mb-3">
+    <i class="bi bi-info-circle me-1"></i>
+    Os valores informados referem-se à chuva acumulada em 24 horas, aferida às 9h da manhã do dia seguinte.
+</div>
+
 <div class="weather-card fade-in-up">
     <div class="card-body p-0">
         <!-- Tabs Header -->

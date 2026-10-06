@@ -7,6 +7,9 @@ use App\Models\ChuvaManualModel;
 use App\Models\AlertaModel;
 use App\Models\NoticiaModel;
 use App\Models\LeituraModel;
+use App\Models\UserModel;
+use App\Models\ChuvaCorrecaoModel;
+use App\Services\TotpService;
 
 class AdminController extends Controller
 {
@@ -14,6 +17,8 @@ class AdminController extends Controller
     private AlertaModel $alertaModel;
     private NoticiaModel $noticiaModel;
     private LeituraModel $leituraModel;
+    private UserModel $userModel;
+    private ChuvaCorrecaoModel $chuvaCorrecaoModel;
     private \MysqliDb $db;
 
     public function __construct()
@@ -27,6 +32,8 @@ class AdminController extends Controller
         $this->alertaModel = new AlertaModel();
         $this->noticiaModel = new NoticiaModel();
         $this->leituraModel = new LeituraModel();
+        $this->userModel = new UserModel();
+        $this->chuvaCorrecaoModel = new ChuvaCorrecaoModel();
         $this->db = $GLOBALS['db'];
     }
 
@@ -296,7 +303,7 @@ class AdminController extends Controller
     public function nowcasting(): void
     {
         $stats = $this->leituraModel->getNowcastingStats();
-        
+
         $historico = $this->db->rawQuery(
             "SELECT * FROM nowcasting ORDER BY created_at DESC LIMIT 50"
         );
@@ -306,5 +313,199 @@ class AdminController extends Controller
             'stats' => $stats,
             'historico' => $historico
         ], 'admin');
+    }
+
+    // === USUÁRIOS ===
+
+    public function usuarios(): void
+    {
+        $dados = $this->userModel->getAll();
+        $this->view('admin/usuarios/index', [
+            'title' => 'Gerenciar Usuários',
+            'dados' => $dados
+        ], 'admin');
+    }
+
+    public function usuarioAdd(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $erro = $this->validarUsuarioForm();
+            if ($erro) {
+                $this->view('admin/usuarios/form', ['title' => 'Novo Usuário', 'erro' => $erro], 'admin');
+                return;
+            }
+
+            $this->userModel->create([
+                'name' => trim($_POST['name']),
+                'email' => trim($_POST['email']),
+                'password' => $_POST['password'],
+                'is_admin' => isset($_POST['is_admin']),
+            ]);
+            header('Location: /admin/usuarios');
+            return;
+        }
+        $this->view('admin/usuarios/form', ['title' => 'Novo Usuário'], 'admin');
+    }
+
+    public function usuarioEdit(): void
+    {
+        $id = (int) $this->getParam('id');
+        $item = $this->userModel->getById($id);
+
+        if (!$item) {
+            header('Location: /admin/usuarios');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $erro = $this->validarUsuarioForm($id);
+            if ($erro) {
+                $this->view('admin/usuarios/form', ['title' => 'Editar Usuário', 'item' => $item, 'erro' => $erro], 'admin');
+                return;
+            }
+
+            $this->userModel->update($id, [
+                'name' => trim($_POST['name']),
+                'email' => trim($_POST['email']),
+                'password' => $_POST['password'] ?? '',
+                'is_admin' => isset($_POST['is_admin']),
+            ]);
+            header('Location: /admin/usuarios');
+            return;
+        }
+
+        $this->view('admin/usuarios/form', [
+            'title' => 'Editar Usuário',
+            'item' => $item
+        ], 'admin');
+    }
+
+    public function usuarioDelete(): void
+    {
+        $id = (int) $this->getParam('id');
+        if ($id !== ($_SESSION['usuario_id'] ?? null)) {
+            $this->userModel->delete($id);
+        }
+        header('Location: /admin/usuarios');
+    }
+
+    private function validarUsuarioForm(?int $editId = null): ?string
+    {
+        $name = trim($_POST['name'] ?? '');
+        $email = trim($_POST['email'] ?? '');
+        $password = $_POST['password'] ?? '';
+
+        if ($name === '' || $email === '') {
+            return 'Nome e e-mail são obrigatórios.';
+        }
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            return 'E-mail inválido.';
+        }
+        if ($editId === null && $password === '') {
+            return 'Senha é obrigatória para novo usuário.';
+        }
+        if ($password !== '' && strlen($password) < 8) {
+            return 'Senha deve ter pelo menos 8 caracteres.';
+        }
+        if ($this->userModel->emailExists($email, $editId)) {
+            return 'Já existe um usuário com este e-mail.';
+        }
+
+        return null;
+    }
+
+    // === CORREÇÃO DE CHUVA AUTOMÁTICA ===
+
+    public function chuvaAutomatica(): void
+    {
+        $dados = $this->chuvaCorrecaoModel->getAll();
+        $this->view('admin/chuva-automatica/index', [
+            'title' => 'Corrigir Chuva Automática',
+            'dados' => $dados
+        ], 'admin');
+    }
+
+    public function chuvaAutomaticaSalvar(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $local = (string) ($_POST['local'] ?? '1');
+            $data = $_POST['data'] ?? date('Y-m-d');
+            $hora = trim($_POST['hora'] ?? '') ?: null;
+            $choveu = isset($_POST['choveu']);
+            $valor = (float) str_replace(',', '.', $_POST['valor_mm'] ?? '0');
+            $obs = trim($_POST['obs'] ?? '') ?: null;
+
+            $this->chuvaCorrecaoModel->salvar($local, $data, $valor, $obs, $hora, $choveu);
+            $this->cache->clear();
+            header('Location: /admin/chuva-automatica');
+            return;
+        }
+        header('Location: /admin/chuva-automatica');
+    }
+
+    public function chuvaAutomaticaDelete(): void
+    {
+        $id = (int) $this->getParam('id');
+        $this->chuvaCorrecaoModel->delete($id);
+        $this->cache->clear();
+        header('Location: /admin/chuva-automatica');
+    }
+
+    // === 2FA (autosserviço, cada usuário configura a própria conta) ===
+
+    public function twofa(): void
+    {
+        $user = $this->userModel->getById((int) $_SESSION['usuario_id']);
+
+        if (!empty($user['totp_enabled'])) {
+            $this->view('admin/2fa', ['title' => 'Autenticação em Duas Etapas', 'ativado' => true], 'admin');
+            return;
+        }
+
+        // Gera (ou reaproveita) um segredo pendente de confirmação
+        if (empty($_SESSION['2fa_setup_secret'])) {
+            $_SESSION['2fa_setup_secret'] = (new TotpService())->generateSecret();
+        }
+        $secret = $_SESSION['2fa_setup_secret'];
+        $otpUri = (new TotpService())->getOtpAuthUri($secret, $user['email']);
+
+        $this->view('admin/2fa', [
+            'title' => 'Autenticação em Duas Etapas',
+            'ativado' => false,
+            'secret' => $secret,
+            'otpUri' => $otpUri,
+        ], 'admin');
+    }
+
+    public function twofaEnable(): void
+    {
+        $userId = (int) $_SESSION['usuario_id'];
+        $secret = $_SESSION['2fa_setup_secret'] ?? '';
+        $codigo = $_POST['codigo'] ?? '';
+
+        if ($secret && (new TotpService())->verifyCode($secret, $codigo)) {
+            $this->userModel->setTotpSecret($userId, $secret);
+            $this->userModel->enableTotp($userId);
+            unset($_SESSION['2fa_setup_secret']);
+            header('Location: /admin/2fa');
+            return;
+        }
+
+        $user = $this->userModel->getById($userId);
+        $otpUri = (new TotpService())->getOtpAuthUri($secret, $user['email']);
+        $this->view('admin/2fa', [
+            'title' => 'Autenticação em Duas Etapas',
+            'ativado' => false,
+            'secret' => $secret,
+            'otpUri' => $otpUri,
+            'erro' => 'Código inválido. Tente novamente.',
+        ], 'admin');
+    }
+
+    public function twofaDisable(): void
+    {
+        $this->userModel->disableTotp((int) $_SESSION['usuario_id']);
+        unset($_SESSION['2fa_setup_secret']);
+        header('Location: /admin/2fa');
     }
 }

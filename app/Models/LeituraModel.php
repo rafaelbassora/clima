@@ -10,6 +10,7 @@ class LeituraModel
     private Cache $cache;
     private int $ttlRapido;
     private int $ttlHist;
+    private ChuvaCorrecaoModel $chuvaCorrecao;
 
     public function __construct()
     {
@@ -18,6 +19,7 @@ class LeituraModel
         $config = $GLOBALS['config'];
         $this->ttlRapido = $config['cache']['ttl_rapido'] ?? 60;
         $this->ttlHist = $config['cache']['ttl_hist'] ?? 3600;
+        $this->chuvaCorrecao = new ChuvaCorrecaoModel();
     }
 
     /**
@@ -56,6 +58,10 @@ class LeituraModel
                 return null;
             }
 
+            $hoje = date('Y-m-d', strtotime($result['created_at'] ?? 'now'));
+            $correcaoHoje = $this->chuvaCorrecao->getValor($local, $hoje) ?? 0;
+            $chuvaDia = round((float) (($result['rain_today'] ?? 0) / 10) + $correcaoHoje, 2);
+
             return [
                 'temperatura' => round(($result['temp'] ?? 0) / 10, 1),
                 'umidade' => (int) ($result['hum'] ?? 0),
@@ -70,7 +76,7 @@ class LeituraModel
                 'uv' => round(($result['uvi'] ?? 0) / 10, 1),
                 'sensacao' => round((float) (($result['heat'] ?? $result['temp'] ?? 0) / 10), 1),
                 'ponto_orvalho' => round((float) (($result['dew'] ?? 0) / 10), 1),
-                'chuva_dia' => round((float) (($result['rain_today'] ?? 0) / 10), 2),
+                'chuva_dia' => $chuvaDia,
                 'et_hoje' => $this->getEvapotranspiracaoHoje($local),
                 'rainrate' => round((float) (($result['rainrate'] ?? 0) / 10), 1),
                 'atualizado' => date('H:i', strtotime($result['created_at'] ?? 'now')),
@@ -89,7 +95,7 @@ class LeituraModel
             $results = $this->db->rawQuery(
                 "SELECT data_leitura AS data,
                         MAX(rain) / 10 AS mm,
-                        DATE_FORMAT(MAX(CASE WHEN rain > 0 THEN created_at END), '%H:%i') as ultima_hora
+                        DATE_FORMAT(MAX(CASE WHEN rainrate > 0 THEN created_at END), '%H:%i') as ultima_hora
                  FROM leituras_completas
                  WHERE local = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
                  GROUP BY data_leitura
@@ -103,7 +109,7 @@ class LeituraModel
                 $d = date('Y-m-d', strtotime("-{$i} days"));
                 $dias[$d] = [
                     'data' => date('d/m/Y', strtotime($d)),
-                    'mm' => '0,00',
+                    'mm_raw' => 0.0,
                     'ultima_hora' => '-',
                     'local' => $this->getLocalNome($local),
                 ];
@@ -114,9 +120,24 @@ class LeituraModel
                     continue;
                 $d = $row['data'];
                 if (isset($dias[$d])) {
-                    $dias[$d]['mm'] = number_format((float) $row['mm'], 2, ',', '.');
+                    $dias[$d]['mm_raw'] = (float) $row['mm'];
                     $dias[$d]['ultima_hora'] = $row['ultima_hora'] ?: '-';
                 }
+            }
+
+            // Soma correções manuais (ex: funil entupido) ao valor captado pelo sensor
+            $inicio = date('Y-m-d', strtotime('-6 days'));
+            $fim = date('Y-m-d');
+            $correcoes = $this->chuvaCorrecao->getMapaPeriodo($local, $inicio, $fim);
+            foreach ($correcoes as $d => $valorMm) {
+                if (isset($dias[$d])) {
+                    $dias[$d]['mm_raw'] += $valorMm;
+                }
+            }
+
+            foreach ($dias as $d => $info) {
+                $dias[$d]['mm'] = number_format($info['mm_raw'], 2, ',', '.');
+                unset($dias[$d]['mm_raw']);
             }
 
             return array_values($dias);
@@ -600,23 +621,27 @@ class LeituraModel
                 $start = "{$year}-01-01 00:00:00";
                 $end = "{$year}-12-31 23:59:59";
 
-                $results = $this->db->rawQuery(
-                    "SELECT MONTH(created_at) as mes, MAX(rain) as max_chuva
-                     FROM leituras_completas
-                     WHERE local = ? AND created_at BETWEEN ? AND ? AND automatic = ?
-                     GROUP BY DATE(created_at)
-                     ORDER BY created_at DESC",
-                    [$local, $start, $end, $automatic]
-                );
-
                 // Agrupa por mês após pegar o max de cada dia
                 $mensal = [];
                 $totalAnual = 0;
                 $mesesNomes = [1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Abr', 5 => 'Mai', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago', 9 => 'Set', 10 => 'Out', 11 => 'Nov', 12 => 'Dez'];
 
-                foreach ($results as $row) {
+                $correcoesAno = $automatic === '1' ? $this->chuvaCorrecao->getMapaPeriodo($local, $start, $end) : [];
+
+                // Reagrupa por dia (com a data exata) pra poder aplicar as correções antes de somar o mês
+                $diarios = $this->db->rawQuery(
+                    "SELECT DATE(created_at) as dia, MONTH(created_at) as mes, MAX(rain) as max_chuva
+                     FROM leituras_completas
+                     WHERE local = ? AND created_at BETWEEN ? AND ? AND automatic = ?
+                     GROUP BY dia
+                     ORDER BY dia",
+                    [$local, $start, $end, $automatic]
+                );
+
+                foreach ($diarios as $row) {
                     $m = (int) $row['mes'];
-                    $valor = (float) $row['max_chuva'] / 10;
+                    $dia = $row['dia'];
+                    $valor = (float) $row['max_chuva'] / 10 + ($correcoesAno[$dia] ?? 0);
                     if (!isset($mensal[$m]))
                         $mensal[$m] = 0;
                     $mensal[$m] += $valor;
@@ -646,13 +671,16 @@ class LeituraModel
                 [$local, $start, $end, $automatic]
             );
 
+            $correcoesMes = $automatic === '1' ? $this->chuvaCorrecao->getMapaPeriodo($local, $start, $end) : [];
+
             $dados = [];
             $totalMensal = 0;
             foreach ($results as $row) {
-                $valor = (float) $row['max_chuva'] / 10;
+                $dia = $row['data'];
+                $valor = (float) $row['max_chuva'] / 10 + ($correcoesMes[$dia] ?? 0);
                 $totalMensal += $valor;
                 $dados[] = [
-                    'dia' => date('d/m/Y', strtotime($row['data'])),
+                    'dia' => date('d/m/Y', strtotime($dia)),
                     'chuva' => number_format($valor, 2),
                 ];
             }
@@ -999,16 +1027,29 @@ class LeituraModel
 
             // 3. Status Atual (Dias sem chuva acumulada > 0 hoje)
             $ultimaChuva = $this->db->rawQueryOne(
-                "SELECT created_at FROM leituras_completas 
+                "SELECT created_at FROM leituras_completas
                  WHERE local = ? AND rain > 0 AND automatic = '1'
                  ORDER BY created_at DESC LIMIT 1",
                 [$local]
             );
+            $dataUltimaSensor = $ultimaChuva ? new \DateTime($ultimaChuva['created_at']) : null;
+
+            // Considera também a correção manual mais recente com valor > 0
+            // (ex: dia em que o funil ficou entupido e o sensor não registrou nada)
+            $ultimaCorrecao = $this->db->rawQueryOne(
+                "SELECT data FROM chuva_correcoes WHERE local = ? AND valor_mm > 0 ORDER BY data DESC LIMIT 1",
+                [$local]
+            );
+            $dataUltimaCorrecao = $ultimaCorrecao ? new \DateTime($ultimaCorrecao['data']) : null;
+
+            $dataUltima = $dataUltimaSensor;
+            if ($dataUltimaCorrecao && (!$dataUltima || $dataUltimaCorrecao > $dataUltima)) {
+                $dataUltima = $dataUltimaCorrecao;
+            }
 
             $diasSemChuva = 0;
-            if ($ultimaChuva) {
+            if ($dataUltima) {
                 $hoje = new \DateTime();
-                $dataUltima = new \DateTime($ultimaChuva['created_at']);
                 $diasSemChuva = $dataUltima->diff($hoje)->days;
             }
 

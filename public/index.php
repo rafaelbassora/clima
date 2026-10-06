@@ -84,6 +84,8 @@ $router->get('/previsao-do-tempo',  'PrevisaoController',     'index');
 // Auth
 $router->get('/login',              'LoginController',        'index');
 $router->post('/login',             'LoginController',        'auth');
+$router->get('/login/2fa',          'LoginController',        'twofa');
+$router->post('/login/2fa',         'LoginController',        'twofaVerify');
 $router->get('/logout',             'LoginController',        'logout');
 
 // Admin
@@ -110,6 +112,24 @@ $router->get('/admin/noticia/edit',   'AdminController',        'noticiaEdit');
 $router->post('/admin/noticia/edit',  'AdminController',        'noticiaEdit');
 $router->get('/admin/noticia/delete', 'AdminController',        'noticiaDelete');
 $router->get('/admin/nowcasting',     'AdminController',        'nowcasting');
+
+// Usuários Admin
+$router->get('/admin/usuarios',        'AdminController',        'usuarios');
+$router->get('/admin/usuario/add',     'AdminController',        'usuarioAdd');
+$router->post('/admin/usuario/add',    'AdminController',        'usuarioAdd');
+$router->get('/admin/usuario/edit',    'AdminController',        'usuarioEdit');
+$router->post('/admin/usuario/edit',   'AdminController',        'usuarioEdit');
+$router->get('/admin/usuario/delete',  'AdminController',        'usuarioDelete');
+
+// Correção de Chuva Automática Admin
+$router->get('/admin/chuva-automatica',         'AdminController', 'chuvaAutomatica');
+$router->post('/admin/chuva-automatica/salvar', 'AdminController', 'chuvaAutomaticaSalvar');
+$router->get('/admin/chuva-automatica/delete',  'AdminController', 'chuvaAutomaticaDelete');
+
+// 2FA Admin (autosserviço)
+$router->get('/admin/2fa',          'AdminController', 'twofa');
+$router->post('/admin/2fa/enable',  'AdminController', 'twofaEnable');
+$router->post('/admin/2fa/disable', 'AdminController', 'twofaDisable');
 
 // API (AJAX)
 $router->get('/api/clima-atual',      'ApiController',         'climaAtual');

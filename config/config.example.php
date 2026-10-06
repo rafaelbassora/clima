@@ -38,8 +38,6 @@ return [
 
     // Login admin
     'admin' => [
-        'usuario'          => 'CHANGE_ME',
-        'senha'            => 'CHANGE_ME',
         'turnstile_secret' => 'CHANGE_ME',
     ],
 
