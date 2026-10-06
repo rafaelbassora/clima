@@ -64,9 +64,9 @@
             <input type="password" name="senha" class="form-control" required>
         </div>
 
-        <div class="cf-turnstile mb-4" data-sitekey="0x4AAAAAAC9uBAnb4gKBrcof" data-theme="light"></div>
+        <div class="cf-turnstile mb-4" data-sitekey="0x4AAAAAAC9uBAnb4gKBrcof" data-theme="light" data-callback="onTurnstileOk"></div>
 
-        <button type="submit" class="btn btn-login w-100 rounded-pill">Entrar</button>
+        <button type="submit" class="btn btn-login w-100 rounded-pill" id="btnEntrar" disabled>Entrar</button>
     </form>
 
     <div class="text-center mt-3">
@@ -76,6 +76,12 @@
         <a href="/" class="text-muted small text-decoration-none">Voltar ao site</a>
     </div>
 </div>
+
+<script>
+function onTurnstileOk() {
+    document.getElementById('btnEntrar').disabled = false;
+}
+</script>
 
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 </body>

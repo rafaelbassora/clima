@@ -98,6 +98,22 @@ class ChuvaCidadaModel
     }
 
     /**
+     * Últimos lançamentos com observação, nome e e-mail do cidadão — só pro admin moderar.
+     */
+    public function getUltimosParaAdmin(int $limit = 50): array
+    {
+        return $this->db->rawQuery(
+            "SELECT c.station_code, c.nome, c.email, cc.data, cc.medida_mm, cc.granizo, cc.chuva_mansa, cc.chuva_forte, cc.observacao
+             FROM chuva_cidada cc
+             INNER JOIN cidadaos c ON c.id = cc.cidadao_id
+             WHERE cc.observacao IS NOT NULL AND cc.observacao != ''
+             ORDER BY cc.created_at DESC
+             LIMIT ?",
+            [$limit]
+        );
+    }
+
+    /**
      * Histórico público de uma estação específica (só se estiver aprovada).
      */
     public function getHistoricoPorEstacao(string $stationCode, int $limit = 90): array

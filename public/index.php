@@ -101,6 +101,7 @@ $router->get('/pluviometro-cidadao/esqueci-senha',            'CidadaoController
 $router->post('/pluviometro-cidadao/esqueci-senha',           'CidadaoController', 'esqueciSenhaEnviar');
 $router->get('/pluviometro-cidadao/redefinir-senha',          'CidadaoController', 'redefinirSenha');
 $router->post('/pluviometro-cidadao/redefinir-senha',         'CidadaoController', 'redefinirSenhaSalvar');
+$router->get('/pluviometro-cidadao/confirmar-email',          'CidadaoController', 'confirmarEmail');
 
 // Auth
 $router->get('/login',              'LoginController',        'index');

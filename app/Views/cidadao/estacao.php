@@ -44,13 +44,12 @@ foreach ($historico as $row) {
                         <th>Data</th>
                         <th>mm</th>
                         <th>Eventos</th>
-                        <th>Observação</th>
                     </tr>
                 </thead>
                 <tbody>
                     <?php if (empty($historico)): ?>
                         <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">Nenhum lançamento registrado ainda.</td>
+                            <td colspan="3" class="text-center py-4 text-muted">Nenhum lançamento registrado ainda.</td>
                         </tr>
                     <?php endif; ?>
                     <?php foreach ($historico as $row): ?>
@@ -62,7 +61,6 @@ foreach ($historico as $row) {
                                 <?php if (!empty($row['chuva_mansa'])): ?><span class="badge bg-secondary me-1">Mansa</span><?php endif; ?>
                                 <?php if (!empty($row['chuva_forte'])): ?><span class="badge bg-danger">Forte</span><?php endif; ?>
                             </td>
-                            <td class="small text-muted"><?= htmlspecialchars($row['observacao'] ?? '') ?></td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>

@@ -91,8 +91,12 @@
                     <div id="cepResultado" class="small text-muted"></div>
                 </div>
 
+                <div class="col-12">
+                    <div class="cf-turnstile" data-sitekey="0x4AAAAAAC9uBAnb4gKBrcof" data-theme="light" data-callback="onTurnstileOk"></div>
+                </div>
+
                 <div class="col-12 mt-4 text-end">
-                    <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold" id="btnEnviar">
+                    <button type="submit" class="btn btn-primary rounded-pill px-5 fw-bold" id="btnEnviar" disabled>
                         Enviar Cadastro
                     </button>
                 </div>
@@ -101,6 +105,12 @@
     </div>
 </div>
 
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script>
+function onTurnstileOk() {
+    document.getElementById('btnEnviar').disabled = false;
+}
+</script>
 <script>
 document.querySelectorAll('input[name="tipo"]').forEach(function (radio) {
     radio.addEventListener('change', function () {

@@ -23,7 +23,10 @@
                         <label class="form-label small fw-bold">Senha</label>
                         <input type="password" name="senha" class="form-control" required>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">Entrar</button>
+                    <div class="mb-4">
+                        <div class="cf-turnstile" data-sitekey="0x4AAAAAAC9uBAnb4gKBrcof" data-theme="light" data-callback="onTurnstileOk"></div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold" id="btnEntrar" disabled>Entrar</button>
                 </form>
 
                 <div class="text-center mt-3">
@@ -36,3 +39,10 @@
         </div>
     </div>
 </div>
+
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+<script>
+function onTurnstileOk() {
+    document.getElementById('btnEntrar').disabled = false;
+}
+</script>

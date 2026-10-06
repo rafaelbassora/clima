@@ -82,7 +82,8 @@ class CidadaoModel
     }
 
     /**
-     * Atualiza os dados de perfil do próprio cidadão (área restrita).
+     * Atualiza os dados de perfil do próprio cidadão (área restrita), exceto o e-mail
+     * (que passa por confirmação em separado — ver solicitarTrocaEmail).
      * CPF e CNPJ nunca são alterados aqui — são imutáveis após o cadastro.
      */
     public function atualizarPerfil(int $id, array $data): bool
@@ -94,9 +95,50 @@ class CidadaoModel
             'nome_social' => $data['nome_social'] ?: null,
             'sexo' => $data['sexo'] ?: null,
             'data_nascimento' => $data['data_nascimento'] ?: null,
-            'email' => $data['email'],
             'celular' => $data['celular'],
         ]);
+    }
+
+    /**
+     * Gera um token de confirmação pro novo e-mail (só passa a valer quando confirmado).
+     */
+    public function solicitarTrocaEmail(int $id, string $novoEmail): string
+    {
+        $token = bin2hex(random_bytes(32));
+        $this->db->where('id', $id);
+        $this->db->update('cidadaos', [
+            'email_pendente' => $novoEmail,
+            'email_token' => $token,
+            'email_token_expires' => date('Y-m-d H:i:s', strtotime('+1 hour')),
+        ]);
+        return $token;
+    }
+
+    public function confirmarTrocaEmail(string $token): ?array
+    {
+        $this->db->where('email_token', $token);
+        $this->db->where('email_token_expires', date('Y-m-d H:i:s'), '>=');
+        $cidadao = $this->db->getOne('cidadaos');
+
+        if (!$cidadao || empty($cidadao['email_pendente'])) {
+            return null;
+        }
+
+        // Revalida unicidade no momento da confirmação (evita corrida com outro cadastro/edição)
+        if ($this->emailExists($cidadao['email_pendente'], (int) $cidadao['id'])) {
+            return null;
+        }
+
+        $this->db->where('id', $cidadao['id']);
+        $this->db->update('cidadaos', [
+            'email' => $cidadao['email_pendente'],
+            'email_pendente' => null,
+            'email_token' => null,
+            'email_token_expires' => null,
+        ]);
+
+        $cidadao['email'] = $cidadao['email_pendente'];
+        return $cidadao;
     }
 
     /**
@@ -135,10 +177,19 @@ class CidadaoModel
         return $this->db->update('cidadaos', ['status' => 'rejeitado']);
     }
 
-    public function gerarTokenReset(string $email): ?string
+    /**
+     * Gera token de redefinição de senha, exigindo que o CPF (pessoa física) ou
+     * CNPJ (empresa) informado bata com o cadastro — segunda verificação além do e-mail.
+     */
+    public function gerarTokenReset(string $email, string $documento): ?string
     {
         $cidadao = $this->findByEmail($email);
         if (!$cidadao) {
+            return null;
+        }
+
+        $documentoCadastrado = $cidadao['tipo'] === 'pj' ? ($cidadao['cnpj'] ?? '') : ($cidadao['cpf'] ?? '');
+        if ($documentoCadastrado === '' || $documento !== $documentoCadastrado) {
             return null;
         }
 

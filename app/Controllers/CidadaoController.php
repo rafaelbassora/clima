@@ -65,8 +65,41 @@ class CidadaoController extends Controller
         $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro'], 'main');
     }
 
+    /**
+     * Verifica o desafio Cloudflare Turnstile enviado no POST.
+     */
+    private function verificarTurnstile(): bool
+    {
+        $secret = $this->config['admin']['turnstile_secret'] ?? '';
+        $resposta = $_POST['cf-turnstile-response'] ?? '';
+
+        if (!$secret || !$resposta || !function_exists('curl_init')) {
+            return false;
+        }
+
+        $ch = curl_init('https://challenges.cloudflare.com/turnstile/v0/siteverify');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, [
+            'secret' => $secret,
+            'response' => $resposta,
+            'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+        ]);
+        $json = curl_exec($ch);
+        curl_close($ch);
+
+        $result = json_decode($json, true);
+        return !empty($result['success']);
+    }
+
     private function processarCadastro(): void
     {
+        if (!$this->verificarTurnstile()) {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => 'Por favor, confirme que você não é um robô.'], 'main');
+            return;
+        }
+
         $tipo = $_POST['tipo'] ?? 'pf';
         $email = trim($_POST['email'] ?? '');
         $senha = $_POST['senha'] ?? '';
@@ -151,6 +184,11 @@ class CidadaoController extends Controller
 
     public function loginAuth(): void
     {
+        if (!$this->verificarTurnstile()) {
+            $this->view('cidadao/login', ['pageTitle' => 'Entrar - Pluviômetro Cidadão', 'erro' => 'Por favor, confirme que você não é um robô.'], 'main');
+            return;
+        }
+
         $email = trim($_POST['email'] ?? '');
         $senha = $_POST['senha'] ?? '';
 
@@ -290,13 +328,15 @@ class CidadaoController extends Controller
                 return;
             }
 
+            $cidadaoAtual = $this->model->getById($cidadaoId);
+            $trocandoEmail = $email !== $cidadaoAtual['email'];
+
             $this->model->atualizarPerfil($cidadaoId, [
                 'nome' => $nome,
                 'usa_nome_social' => isset($_POST['usa_nome_social']),
                 'nome_social' => trim($_POST['nome_social'] ?? ''),
                 'sexo' => $_POST['sexo'] ?? '',
                 'data_nascimento' => $_POST['data_nascimento'] ?? '',
-                'email' => $email,
                 'celular' => $celular,
             ]);
 
@@ -304,13 +344,37 @@ class CidadaoController extends Controller
                 ? trim($_POST['nome_social'])
                 : $nome;
 
-            $this->view('cidadao/perfil', ['pageTitle' => 'Meus Dados', 'sucesso' => 'Dados atualizados com sucesso.', 'item' => $this->model->getById($cidadaoId)], 'main');
+            $mensagem = 'Dados atualizados com sucesso.';
+
+            if ($trocandoEmail) {
+                $token = $this->model->solicitarTrocaEmail($cidadaoId, $email);
+                $base = $this->urlBase();
+                $link = "{$base}/pluviometro-cidadao/confirmar-email?token={$token}";
+                $corpo = "<p>Você solicitou a troca do e-mail de acesso no Pluviômetro Cidadão.</p>"
+                    . "<p><a href=\"{$link}\">Clique aqui para confirmar o novo e-mail</a></p>"
+                    . "<p>Este link expira em 1 hora. Enquanto não for confirmado, o e-mail antigo continua valendo pro login.</p>";
+                (new MailerService())->enviar($email, $nome, 'Confirme seu novo e-mail - Pluviômetro Cidadão', $corpo);
+                $mensagem .= ' Enviamos um link de confirmação para o novo e-mail — ele só passa a valer depois de confirmado.';
+            }
+
+            $this->view('cidadao/perfil', ['pageTitle' => 'Meus Dados', 'sucesso' => $mensagem, 'item' => $this->model->getById($cidadaoId)], 'main');
             return;
         }
 
         $this->view('cidadao/perfil', [
             'pageTitle' => 'Meus Dados',
             'item' => $this->model->getById($cidadaoId),
+        ], 'main');
+    }
+
+    public function confirmarEmail(): void
+    {
+        $token = $this->getParam('token', '');
+        $cidadao = $token ? $this->model->confirmarTrocaEmail($token) : null;
+
+        $this->view('cidadao/confirmar-email', [
+            'pageTitle' => 'Confirmação de E-mail',
+            'sucesso' => (bool) $cidadao,
         ], 'main');
     }
 
@@ -342,12 +406,12 @@ class CidadaoController extends Controller
     public function esqueciSenhaEnviar(): void
     {
         $email = trim($_POST['email'] ?? '');
+        $documento = preg_replace('/\D/', '', $_POST['documento'] ?? '');
 
-        if ($email !== '') {
-            $token = $this->model->gerarTokenReset($email);
+        if ($email !== '' && $documento !== '') {
+            $token = $this->model->gerarTokenReset($email, $documento);
             if ($token) {
-                $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
-                $base = ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+                $base = $this->urlBase();
                 $link = "{$base}/pluviometro-cidadao/redefinir-senha?token={$token}";
                 $corpo = "<p>Você solicitou a redefinição de senha do Pluviômetro Cidadão.</p>"
                     . "<p><a href=\"{$link}\">Clique aqui para criar uma nova senha</a></p>"
@@ -358,8 +422,14 @@ class CidadaoController extends Controller
 
         $this->view('cidadao/esqueci-senha', [
             'pageTitle' => 'Recuperar Senha',
-            'sucesso' => 'Se este e-mail estiver cadastrado, você receberá um link de redefinição em instantes.',
+            'sucesso' => 'Se o e-mail e o CPF/CNPJ informados baterem com um cadastro, você receberá um link de redefinição em instantes.',
         ], 'main');
+    }
+
+    private function urlBase(): string
+    {
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        return ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
 
     public function redefinirSenha(): void

@@ -10,6 +10,7 @@ use App\Models\LeituraModel;
 use App\Models\UserModel;
 use App\Models\ChuvaCorrecaoModel;
 use App\Models\CidadaoModel;
+use App\Models\ChuvaCidadaModel;
 use App\Services\TotpService;
 use App\Services\MailerService;
 
@@ -22,6 +23,7 @@ class AdminController extends Controller
     private UserModel $userModel;
     private ChuvaCorrecaoModel $chuvaCorrecaoModel;
     private CidadaoModel $cidadaoModel;
+    private ChuvaCidadaModel $chuvaCidadaModel;
     private \MysqliDb $db;
 
     public function __construct()
@@ -38,6 +40,7 @@ class AdminController extends Controller
         $this->userModel = new UserModel();
         $this->chuvaCorrecaoModel = new ChuvaCorrecaoModel();
         $this->cidadaoModel = new CidadaoModel();
+        $this->chuvaCidadaModel = new ChuvaCidadaModel();
         $this->db = $GLOBALS['db'];
     }
 
@@ -521,6 +524,7 @@ class AdminController extends Controller
             'title' => 'Pluviômetro Cidadão - Moderação',
             'pendentes' => $this->cidadaoModel->getPendentes(),
             'aprovados' => $this->cidadaoModel->getAprovados(),
+            'lancamentosComObs' => $this->chuvaCidadaModel->getUltimosParaAdmin(50),
         ], 'admin');
     }
 
