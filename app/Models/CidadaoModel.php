@@ -18,9 +18,12 @@ class CidadaoModel
         return $item ?: null;
     }
 
-    public function emailExists(string $email): bool
+    public function emailExists(string $email, ?int $exceptId = null): bool
     {
         $this->db->where('email', $email);
+        if ($exceptId !== null) {
+            $this->db->where('id', $exceptId, '!=');
+        }
         return (bool) $this->db->getOne('cidadaos', 'id');
     }
 
@@ -65,6 +68,8 @@ class CidadaoModel
             'sexo' => $data['sexo'] ?: null,
             'data_nascimento' => $data['data_nascimento'] ?: null,
             'cnpj' => $data['cnpj'] ?: null,
+            'cpf' => $data['cpf'] ?: null,
+            'celular' => $data['celular'],
             'email' => $data['email'],
             'senha' => password_hash($data['senha'], PASSWORD_BCRYPT, ['cost' => 12]),
             'cep' => $data['cep'],
@@ -73,6 +78,24 @@ class CidadaoModel
             'uf' => $data['uf'],
             'status' => 'pendente',
             'created_at' => $now,
+        ]);
+    }
+
+    /**
+     * Atualiza os dados de perfil do próprio cidadão (área restrita).
+     * CPF e CNPJ nunca são alterados aqui — são imutáveis após o cadastro.
+     */
+    public function atualizarPerfil(int $id, array $data): bool
+    {
+        $this->db->where('id', $id);
+        return $this->db->update('cidadaos', [
+            'nome' => $data['nome'],
+            'usa_nome_social' => $data['usa_nome_social'] ? 1 : 0,
+            'nome_social' => $data['nome_social'] ?: null,
+            'sexo' => $data['sexo'] ?: null,
+            'data_nascimento' => $data['data_nascimento'] ?: null,
+            'email' => $data['email'],
+            'celular' => $data['celular'],
         ]);
     }
 

@@ -8,7 +8,10 @@
             &middot; Olá, <?= htmlspecialchars($_SESSION['cidadao_nome'] ?? '') ?>
         </p>
     </div>
-    <a href="<?= url('/pluviometro-cidadao/logout') ?>" class="btn btn-sm btn-outline-danger rounded-pill px-3">Sair</a>
+    <div>
+        <a href="<?= url('/pluviometro-cidadao/painel/perfil') ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3 me-2">Meus Dados</a>
+        <a href="<?= url('/pluviometro-cidadao/logout') ?>" class="btn btn-sm btn-outline-danger rounded-pill px-3">Sair</a>
+    </div>
 </div>
 
 <div class="weather-card mb-4">

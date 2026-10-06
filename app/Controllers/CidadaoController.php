@@ -94,6 +94,18 @@ class CidadaoController extends Controller
             return;
         }
 
+        $celular = preg_replace('/\D/', '', $_POST['celular'] ?? '');
+        if (strlen($celular) < 10) {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => 'Informe um celular válido com DDD.'], 'main');
+            return;
+        }
+
+        $cpf = preg_replace('/\D/', '', $_POST['cpf'] ?? '');
+        if ($tipo !== 'pj' && strlen($cpf) !== 11) {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => 'Informe um CPF válido (11 dígitos).'], 'main');
+            return;
+        }
+
         $data = [
             'tipo' => $tipo === 'pj' ? 'pj' : 'pf',
             'nome' => trim($_POST['nome'] ?? ''),
@@ -101,7 +113,9 @@ class CidadaoController extends Controller
             'nome_social' => trim($_POST['nome_social'] ?? ''),
             'sexo' => $_POST['sexo'] ?? '',
             'data_nascimento' => $_POST['data_nascimento'] ?? '',
-            'cnpj' => $_POST['cnpj'] ?? '',
+            'cnpj' => $tipo === 'pj' ? preg_replace('/\D/', '', $_POST['cnpj'] ?? '') : '',
+            'cpf' => $tipo !== 'pj' ? $cpf : '',
+            'celular' => $celular,
             'email' => $email,
             'senha' => $senha,
             'cep' => $cep,
@@ -243,6 +257,60 @@ class CidadaoController extends Controller
         $this->view('cidadao/editar', [
             'pageTitle' => 'Editar Lançamento',
             'item' => $item,
+        ], 'main');
+    }
+
+    public function painelPerfil(): void
+    {
+        if (!$this->exigirLogin()) {
+            return;
+        }
+
+        $cidadaoId = (int) $_SESSION['cidadao_id'];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $email = trim($_POST['email'] ?? '');
+            $celular = preg_replace('/\D/', '', $_POST['celular'] ?? '');
+            $nome = trim($_POST['nome'] ?? '');
+
+            if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+                $this->view('cidadao/perfil', ['pageTitle' => 'Meus Dados', 'erro' => 'E-mail inválido.', 'item' => $this->model->getById($cidadaoId)], 'main');
+                return;
+            }
+            if (strlen($celular) < 10) {
+                $this->view('cidadao/perfil', ['pageTitle' => 'Meus Dados', 'erro' => 'Informe um celular válido com DDD.', 'item' => $this->model->getById($cidadaoId)], 'main');
+                return;
+            }
+            if ($nome === '') {
+                $this->view('cidadao/perfil', ['pageTitle' => 'Meus Dados', 'erro' => 'Nome é obrigatório.', 'item' => $this->model->getById($cidadaoId)], 'main');
+                return;
+            }
+            if ($this->model->emailExists($email, $cidadaoId)) {
+                $this->view('cidadao/perfil', ['pageTitle' => 'Meus Dados', 'erro' => 'Já existe outro cadastro com este e-mail.', 'item' => $this->model->getById($cidadaoId)], 'main');
+                return;
+            }
+
+            $this->model->atualizarPerfil($cidadaoId, [
+                'nome' => $nome,
+                'usa_nome_social' => isset($_POST['usa_nome_social']),
+                'nome_social' => trim($_POST['nome_social'] ?? ''),
+                'sexo' => $_POST['sexo'] ?? '',
+                'data_nascimento' => $_POST['data_nascimento'] ?? '',
+                'email' => $email,
+                'celular' => $celular,
+            ]);
+
+            $_SESSION['cidadao_nome'] = (isset($_POST['usa_nome_social']) && trim($_POST['nome_social'] ?? '') !== '')
+                ? trim($_POST['nome_social'])
+                : $nome;
+
+            $this->view('cidadao/perfil', ['pageTitle' => 'Meus Dados', 'sucesso' => 'Dados atualizados com sucesso.', 'item' => $this->model->getById($cidadaoId)], 'main');
+            return;
+        }
+
+        $this->view('cidadao/perfil', [
+            'pageTitle' => 'Meus Dados',
+            'item' => $this->model->getById($cidadaoId),
         ], 'main');
     }
 

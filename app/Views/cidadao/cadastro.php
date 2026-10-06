@@ -39,6 +39,15 @@
                     <label class="form-label small fw-bold">CNPJ</label>
                     <input type="text" name="cnpj" class="form-control" placeholder="00.000.000/0000-00">
                 </div>
+                <div class="col-md-4 campo-pf">
+                    <label class="form-label small fw-bold">CPF</label>
+                    <input type="text" name="cpf" class="form-control" placeholder="000.000.000-00">
+                    <div class="form-text small">Não poderá ser alterado depois de salvo.</div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold">Celular</label>
+                    <input type="tel" name="celular" class="form-control" placeholder="(18) 90000-0000" required>
+                </div>
 
                 <div class="col-12 campo-pf">
                     <div class="form-check form-switch">

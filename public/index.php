@@ -95,6 +95,8 @@ $router->post('/pluviometro-cidadao/painel/lancar',          'CidadaoController'
 $router->get('/pluviometro-cidadao/painel/editar',           'CidadaoController', 'painelEditar');
 $router->post('/pluviometro-cidadao/painel/editar',          'CidadaoController', 'painelEditar');
 $router->get('/pluviometro-cidadao/painel/excluir',          'CidadaoController', 'painelExcluir');
+$router->get('/pluviometro-cidadao/painel/perfil',           'CidadaoController', 'painelPerfil');
+$router->post('/pluviometro-cidadao/painel/perfil',          'CidadaoController', 'painelPerfil');
 $router->get('/pluviometro-cidadao/esqueci-senha',            'CidadaoController', 'esqueciSenha');
 $router->post('/pluviometro-cidadao/esqueci-senha',           'CidadaoController', 'esqueciSenhaEnviar');
 $router->get('/pluviometro-cidadao/redefinir-senha',          'CidadaoController', 'redefinirSenha');
