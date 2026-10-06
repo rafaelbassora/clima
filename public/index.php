@@ -81,11 +81,30 @@ $router->get('/noticias/view',       'NoticiaController',     'show');
 $router->get('/sobre-nos',          'SobreController',        'index');
 $router->get('/previsao-do-tempo',  'PrevisaoController',     'index');
 
+// Pluviômetro Cidadão (público)
+$router->get('/pluviometro-cidadao',                        'CidadaoController', 'index');
+$router->get('/pluviometro-cidadao/cadastro',                'CidadaoController', 'cadastro');
+$router->post('/pluviometro-cidadao/cadastro',               'CidadaoController', 'cadastro');
+$router->get('/pluviometro-cidadao/cep-lookup',               'CidadaoController', 'cepLookup');
+$router->get('/pluviometro-cidadao/login',                   'CidadaoController', 'login');
+$router->post('/pluviometro-cidadao/login',                  'CidadaoController', 'loginAuth');
+$router->get('/pluviometro-cidadao/logout',                  'CidadaoController', 'logout');
+$router->get('/pluviometro-cidadao/painel',                  'CidadaoController', 'painel');
+$router->post('/pluviometro-cidadao/painel/lancar',          'CidadaoController', 'painelLancar');
+$router->get('/pluviometro-cidadao/esqueci-senha',            'CidadaoController', 'esqueciSenha');
+$router->post('/pluviometro-cidadao/esqueci-senha',           'CidadaoController', 'esqueciSenhaEnviar');
+$router->get('/pluviometro-cidadao/redefinir-senha',          'CidadaoController', 'redefinirSenha');
+$router->post('/pluviometro-cidadao/redefinir-senha',         'CidadaoController', 'redefinirSenhaSalvar');
+
 // Auth
 $router->get('/login',              'LoginController',        'index');
 $router->post('/login',             'LoginController',        'auth');
 $router->get('/login/2fa',          'LoginController',        'twofa');
 $router->post('/login/2fa',         'LoginController',        'twofaVerify');
+$router->get('/login/esqueci-senha',    'LoginController',    'esqueciSenha');
+$router->post('/login/esqueci-senha',   'LoginController',    'esqueciSenhaEnviar');
+$router->get('/login/redefinir-senha',  'LoginController',    'redefinirSenha');
+$router->post('/login/redefinir-senha', 'LoginController',    'redefinirSenhaSalvar');
 $router->get('/logout',             'LoginController',        'logout');
 
 // Admin
@@ -130,6 +149,11 @@ $router->get('/admin/chuva-automatica/delete',  'AdminController', 'chuvaAutomat
 $router->get('/admin/2fa',          'AdminController', 'twofa');
 $router->post('/admin/2fa/enable',  'AdminController', 'twofaEnable');
 $router->post('/admin/2fa/disable', 'AdminController', 'twofaDisable');
+
+// Pluviômetro Cidadão (moderação admin)
+$router->get('/admin/cidadaos',         'AdminController', 'cidadaos');
+$router->get('/admin/cidadao/aprovar',  'AdminController', 'cidadaoAprovar');
+$router->get('/admin/cidadao/rejeitar', 'AdminController', 'cidadaoRejeitar');
 
 // API (AJAX)
 $router->get('/api/clima-atual',      'ApiController',         'climaAtual');

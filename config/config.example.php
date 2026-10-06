@@ -41,6 +41,18 @@ return [
         'turnstile_secret' => 'CHANGE_ME',
     ],
 
+    // Servidor de E-mail (SMTP) — usado para recuperação de senha
+    'mail' => [
+        'host' => 'CHANGE_ME',
+        'username' => 'CHANGE_ME',
+        'password' => 'CHANGE_ME',
+        'smtp_auth' => true,
+        'smtp_secure' => 'tls',
+        'port' => 587,
+        'from_email' => 'CHANGE_ME',
+        'from_name' => 'Clima Pereira Barreto',
+    ],
+
     // Ambiente
     'ambiente_testes' => 0, // 1 = exibe barra de desenvolvimento
 ];

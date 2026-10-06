@@ -104,6 +104,7 @@ $assetsBase = rtrim(dirname($scriptName), '/\\');
                 ['url' => url('/inicio'),                                      'icon' => 'bi-house-fill',           'label' => 'Início',               'id' => 'inicio'],
                 ['url' => url('/sobre-nos'),                                   'icon' => 'bi-people-fill',          'label' => 'Sobre Nós',            'id' => 'sobre'],
                 ['url' => url('/inicio-chuva') . '?local=1&year=' . date('Y') . '&month=' . date('m'), 'icon' => 'bi-cloud-rain-heavy-fill', 'label' => 'Índice Pluviométrico', 'id' => 'chuva'],
+                ['url' => url('/pluviometro-cidadao'),                         'icon' => 'bi-people-fill',          'label' => 'Pluviômetro Cidadão', 'id' => 'cidadao'],
                 ['url' => url('/inicio-et') . '?local=1&year=' . date('Y') . '&month=' . date('m'), 'icon' => 'bi-droplet',                 'label' => 'Evapotranspiração',    'id' => 'et'],
                 ['url' => url('/inicio-umidade') . '?local=1&year=' . date('Y') . '&month=' . date('m'), 'icon' => 'bi-droplet-fill',          'label' => 'Umidade',              'id' => 'umidade'],
                 ['url' => url('/inicio-pressao') . '?local=1&year=' . date('Y') . '&month=' . date('m'), 'icon' => 'bi-speedometer2',        'label' => 'Pressão Atmosférica',  'id' => 'pressao'],

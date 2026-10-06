@@ -68,8 +68,11 @@
 
         <button type="submit" class="btn btn-login w-100 rounded-pill">Entrar</button>
     </form>
-    
-    <div class="text-center mt-4">
+
+    <div class="text-center mt-3">
+        <a href="/login/esqueci-senha" class="text-muted small text-decoration-none">Esqueci minha senha</a>
+    </div>
+    <div class="text-center mt-2">
         <a href="/" class="text-muted small text-decoration-none">Voltar ao site</a>
     </div>
 </div>

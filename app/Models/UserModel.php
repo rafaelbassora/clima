@@ -95,4 +95,42 @@ class UserModel
         $this->db->where('id', $id);
         return $this->db->update('usuarios', ['totp_enabled' => 0, 'totp_secret' => null]);
     }
+
+    /**
+     * Gera um token de redefinição de senha válido por 1 hora.
+     */
+    public function gerarTokenReset(string $email): ?string
+    {
+        $user = $this->findByEmail($email);
+        if (!$user) {
+            return null;
+        }
+
+        $token = bin2hex(random_bytes(32));
+        $this->db->where('id', $user['id']);
+        $this->db->update('usuarios', [
+            'reset_token' => $token,
+            'reset_expires' => date('Y-m-d H:i:s', strtotime('+1 hour')),
+        ]);
+
+        return $token;
+    }
+
+    public function findByResetToken(string $token): ?array
+    {
+        $this->db->where('reset_token', $token);
+        $this->db->where('reset_expires', date('Y-m-d H:i:s'), '>=');
+        $user = $this->db->getOne('usuarios');
+        return $user ?: null;
+    }
+
+    public function redefinirSenha(int $id, string $novaSenha): bool
+    {
+        $this->db->where('id', $id);
+        return $this->db->update('usuarios', [
+            'password' => password_hash($novaSenha, PASSWORD_BCRYPT, ['cost' => 12]),
+            'reset_token' => null,
+            'reset_expires' => null,
+        ]);
+    }
 }

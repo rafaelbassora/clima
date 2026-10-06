@@ -1,0 +1,260 @@
+<?php
+
+namespace App\Controllers;
+
+use Core\Controller;
+use App\Models\CidadaoModel;
+use App\Models\ChuvaCidadaModel;
+use App\Services\CepService;
+use App\Services\MailerService;
+
+class CidadaoController extends Controller
+{
+    private CidadaoModel $model;
+    private ChuvaCidadaModel $chuvaModel;
+
+    public function __construct()
+    {
+        parent::__construct();
+        $this->model = new CidadaoModel();
+        $this->chuvaModel = new ChuvaCidadaModel();
+    }
+
+    public function index(): void
+    {
+        $year = (int) date('Y');
+        $month = (int) date('m');
+
+        $this->view('cidadao/index', [
+            'pageTitle' => 'Pluviômetro Cidadão',
+            'resumoMensal' => $this->chuvaModel->getResumoMensalPublico($year, $month),
+            'ultimos' => $this->chuvaModel->getUltimosPublicos(30),
+            'mesAno' => $month . '/' . $year,
+        ], 'main');
+    }
+
+    public function cadastro(): void
+    {
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $this->processarCadastro();
+            return;
+        }
+        $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro'], 'main');
+    }
+
+    private function processarCadastro(): void
+    {
+        $tipo = $_POST['tipo'] ?? 'pf';
+        $email = trim($_POST['email'] ?? '');
+        $senha = $_POST['senha'] ?? '';
+        $cep = $_POST['cep'] ?? '';
+
+        $cepInfo = (new CepService())->consultar($cep);
+
+        if (!$cepInfo['valido']) {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => $cepInfo['erro']], 'main');
+            return;
+        }
+
+        if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => 'E-mail inválido.'], 'main');
+            return;
+        }
+
+        if (strlen($senha) < 8) {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => 'A senha deve ter pelo menos 8 caracteres.'], 'main');
+            return;
+        }
+
+        if ($this->model->emailExists($email)) {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => 'Já existe um cadastro com este e-mail.'], 'main');
+            return;
+        }
+
+        $data = [
+            'tipo' => $tipo === 'pj' ? 'pj' : 'pf',
+            'nome' => trim($_POST['nome'] ?? ''),
+            'usa_nome_social' => isset($_POST['usa_nome_social']),
+            'nome_social' => trim($_POST['nome_social'] ?? ''),
+            'sexo' => $_POST['sexo'] ?? '',
+            'data_nascimento' => $_POST['data_nascimento'] ?? '',
+            'cnpj' => $_POST['cnpj'] ?? '',
+            'email' => $email,
+            'senha' => $senha,
+            'cep' => $cep,
+            'bairro' => $cepInfo['bairro'],
+            'cidade' => $cepInfo['cidade'],
+            'uf' => $cepInfo['uf'],
+        ];
+
+        if ($data['nome'] === '') {
+            $this->view('cidadao/cadastro', ['pageTitle' => 'Cadastrar meu Pluviômetro', 'erro' => 'Nome é obrigatório.'], 'main');
+            return;
+        }
+
+        $this->model->criar($data);
+        $this->view('cidadao/cadastro-sucesso', ['pageTitle' => 'Cadastro Recebido'], 'main');
+    }
+
+    public function cepLookup(): void
+    {
+        $cep = $this->getParam('cep', '');
+        $resultado = (new CepService())->consultar($cep);
+        $this->json($resultado);
+    }
+
+    public function login(): void
+    {
+        if (isset($_SESSION['cidadao_id'])) {
+            header('Location: /pluviometro-cidadao/painel');
+            return;
+        }
+        $this->view('cidadao/login', ['pageTitle' => 'Entrar - Pluviômetro Cidadão'], 'main');
+    }
+
+    public function loginAuth(): void
+    {
+        $email = trim($_POST['email'] ?? '');
+        $senha = $_POST['senha'] ?? '';
+
+        $cidadao = $this->model->findByEmail($email);
+
+        if (!$cidadao || !password_verify($senha, $cidadao['senha'])) {
+            $this->view('cidadao/login', ['pageTitle' => 'Entrar - Pluviômetro Cidadão', 'erro' => 'E-mail ou senha inválidos.'], 'main');
+            return;
+        }
+
+        if ($cidadao['status'] === 'pendente') {
+            $this->view('cidadao/login', ['pageTitle' => 'Entrar - Pluviômetro Cidadão', 'erro' => 'Seu cadastro ainda está em análise. Avisaremos por e-mail quando for aprovado.'], 'main');
+            return;
+        }
+
+        if ($cidadao['status'] === 'rejeitado') {
+            $this->view('cidadao/login', ['pageTitle' => 'Entrar - Pluviômetro Cidadão', 'erro' => 'Seu cadastro não foi aprovado. Entre em contato com a prefeitura para mais informações.'], 'main');
+            return;
+        }
+
+        $_SESSION['cidadao_id'] = $cidadao['id'];
+        $_SESSION['cidadao_nome'] = (!empty($cidadao['usa_nome_social']) && !empty($cidadao['nome_social']))
+            ? $cidadao['nome_social']
+            : $cidadao['nome'];
+        $_SESSION['cidadao_station'] = $cidadao['station_code'];
+        header('Location: /pluviometro-cidadao/painel');
+    }
+
+    public function logout(): void
+    {
+        unset($_SESSION['cidadao_id'], $_SESSION['cidadao_nome'], $_SESSION['cidadao_station']);
+        header('Location: /pluviometro-cidadao/login');
+    }
+
+    public function painel(): void
+    {
+        if (!$this->exigirLogin()) {
+            return;
+        }
+
+        $historico = $this->chuvaModel->getHistorico((int) $_SESSION['cidadao_id']);
+
+        $this->view('cidadao/painel', [
+            'pageTitle' => 'Meu Painel - Pluviômetro Cidadão',
+            'historico' => $historico,
+        ], 'main');
+    }
+
+    public function painelLancar(): void
+    {
+        if (!$this->exigirLogin()) {
+            return;
+        }
+
+        $data = $_POST['data'] ?? date('Y-m-d');
+        $medida = (float) str_replace(',', '.', $_POST['medida_mm'] ?? '0');
+        $granizo = isset($_POST['granizo']);
+        $chuvaMansa = isset($_POST['chuva_mansa']);
+        $observacao = trim($_POST['observacao'] ?? '');
+
+        if ($medida < 0 || $medida > 500 || $data > date('Y-m-d')) {
+            header('Location: /pluviometro-cidadao/painel');
+            return;
+        }
+
+        $this->chuvaModel->lancar((int) $_SESSION['cidadao_id'], $data, $medida, $granizo, $chuvaMansa, $observacao);
+        header('Location: /pluviometro-cidadao/painel');
+    }
+
+    private function exigirLogin(): bool
+    {
+        if (!isset($_SESSION['cidadao_id'])) {
+            header('Location: /pluviometro-cidadao/login');
+            return false;
+        }
+        return true;
+    }
+
+    public function esqueciSenha(): void
+    {
+        $this->view('cidadao/esqueci-senha', ['pageTitle' => 'Recuperar Senha'], 'main');
+    }
+
+    public function esqueciSenhaEnviar(): void
+    {
+        $email = trim($_POST['email'] ?? '');
+
+        if ($email !== '') {
+            $token = $this->model->gerarTokenReset($email);
+            if ($token) {
+                $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+                $base = ($https ? 'https://' : 'http://') . ($_SERVER['HTTP_HOST'] ?? 'localhost');
+                $link = "{$base}/pluviometro-cidadao/redefinir-senha?token={$token}";
+                $corpo = "<p>Você solicitou a redefinição de senha do Pluviômetro Cidadão.</p>"
+                    . "<p><a href=\"{$link}\">Clique aqui para criar uma nova senha</a></p>"
+                    . "<p>Este link expira em 1 hora.</p>";
+                (new MailerService())->enviar($email, '', 'Redefinição de Senha - Pluviômetro Cidadão', $corpo);
+            }
+        }
+
+        $this->view('cidadao/esqueci-senha', [
+            'pageTitle' => 'Recuperar Senha',
+            'sucesso' => 'Se este e-mail estiver cadastrado, você receberá um link de redefinição em instantes.',
+        ], 'main');
+    }
+
+    public function redefinirSenha(): void
+    {
+        $token = $this->getParam('token', '');
+        $cidadao = $token ? $this->model->findByResetToken($token) : null;
+
+        $this->view('cidadao/redefinir-senha', [
+            'pageTitle' => 'Redefinir Senha',
+            'tokenInvalido' => !$cidadao,
+            'token' => $token,
+        ], 'main');
+    }
+
+    public function redefinirSenhaSalvar(): void
+    {
+        $token = $_POST['token'] ?? '';
+        $senha = $_POST['senha'] ?? '';
+        $confirmacao = $_POST['senha_confirmacao'] ?? '';
+
+        $cidadao = $token ? $this->model->findByResetToken($token) : null;
+
+        if (!$cidadao) {
+            $this->view('cidadao/redefinir-senha', ['pageTitle' => 'Redefinir Senha', 'tokenInvalido' => true], 'main');
+            return;
+        }
+
+        if (strlen($senha) < 8 || $senha !== $confirmacao) {
+            $this->view('cidadao/redefinir-senha', [
+                'pageTitle' => 'Redefinir Senha',
+                'token' => $token,
+                'erro' => 'As senhas devem ser iguais e ter pelo menos 8 caracteres.',
+            ], 'main');
+            return;
+        }
+
+        $this->model->redefinirSenha($cidadao['id'], $senha);
+        header('Location: /pluviometro-cidadao/login?redefinida=1');
+    }
+}

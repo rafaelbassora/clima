@@ -9,7 +9,9 @@ use App\Models\NoticiaModel;
 use App\Models\LeituraModel;
 use App\Models\UserModel;
 use App\Models\ChuvaCorrecaoModel;
+use App\Models\CidadaoModel;
 use App\Services\TotpService;
+use App\Services\MailerService;
 
 class AdminController extends Controller
 {
@@ -19,6 +21,7 @@ class AdminController extends Controller
     private LeituraModel $leituraModel;
     private UserModel $userModel;
     private ChuvaCorrecaoModel $chuvaCorrecaoModel;
+    private CidadaoModel $cidadaoModel;
     private \MysqliDb $db;
 
     public function __construct()
@@ -34,6 +37,7 @@ class AdminController extends Controller
         $this->leituraModel = new LeituraModel();
         $this->userModel = new UserModel();
         $this->chuvaCorrecaoModel = new ChuvaCorrecaoModel();
+        $this->cidadaoModel = new CidadaoModel();
         $this->db = $GLOBALS['db'];
     }
 
@@ -507,5 +511,46 @@ class AdminController extends Controller
         $this->userModel->disableTotp((int) $_SESSION['usuario_id']);
         unset($_SESSION['2fa_setup_secret']);
         header('Location: /admin/2fa');
+    }
+
+    // === PLUVIÔMETRO CIDADÃO (moderação) ===
+
+    public function cidadaos(): void
+    {
+        $this->view('admin/cidadaos/index', [
+            'title' => 'Pluviômetro Cidadão - Moderação',
+            'pendentes' => $this->cidadaoModel->getPendentes(),
+            'aprovados' => $this->cidadaoModel->getAprovados(),
+        ], 'admin');
+    }
+
+    public function cidadaoAprovar(): void
+    {
+        $id = (int) $this->getParam('id');
+        $cidadao = $this->cidadaoModel->getById($id);
+        $code = $this->cidadaoModel->aprovar($id);
+
+        if ($cidadao && $code) {
+            $corpo = "<p>Olá, {$this->escapeHtml($cidadao['nome'])}!</p>"
+                . "<p>Seu cadastro no <strong>Pluviômetro Cidadão</strong> foi aprovado.</p>"
+                . "<p>Sua estação recebeu o código: <strong>{$code}</strong></p>"
+                . "<p>Já pode acessar seu painel e começar a lançar os dados de chuva:</p>"
+                . "<p><a href=\"https://clima.pereirabarreto.sp.gov.br/pluviometro-cidadao/login\">Acessar meu painel</a></p>";
+            (new MailerService())->enviar($cidadao['email'], $cidadao['nome'], 'Cadastro Aprovado - Pluviômetro Cidadão', $corpo);
+        }
+
+        header('Location: /admin/cidadaos');
+    }
+
+    public function cidadaoRejeitar(): void
+    {
+        $id = (int) $this->getParam('id');
+        $this->cidadaoModel->rejeitar($id);
+        header('Location: /admin/cidadaos');
+    }
+
+    private function escapeHtml(string $texto): string
+    {
+        return htmlspecialchars($texto, ENT_QUOTES, 'UTF-8');
     }
 }

@@ -5,6 +5,7 @@ namespace App\Controllers;
 use Core\Controller;
 use App\Models\UserModel;
 use App\Services\TotpService;
+use App\Services\MailerService;
 
 class LoginController extends Controller
 {
@@ -128,5 +129,85 @@ class LoginController extends Controller
     {
         session_destroy();
         header('Location: /login');
+    }
+
+    public function esqueciSenha(): void
+    {
+        $this->view('login/esqueci-senha', ['title' => 'Recuperar Senha'], 'none');
+    }
+
+    public function esqueciSenhaEnviar(): void
+    {
+        $email = trim($_POST['email'] ?? '');
+
+        if ($email !== '') {
+            $token = (new UserModel())->gerarTokenReset($email);
+            if ($token) {
+                $link = $this->urlBase() . "/login/redefinir-senha?token={$token}";
+                $corpo = "<p>Você solicitou a redefinição de senha do painel administrativo do Clima Pereira Barreto.</p>"
+                    . "<p><a href=\"{$link}\">Clique aqui para criar uma nova senha</a></p>"
+                    . "<p>Este link expira em 1 hora. Se você não solicitou isso, ignore este e-mail.</p>";
+                (new MailerService())->enviar($email, '', 'Redefinição de Senha - Clima Pereira Barreto', $corpo);
+            }
+        }
+
+        // Mensagem genérica sempre, pra não revelar se o e-mail existe ou não
+        $this->view('login/esqueci-senha', [
+            'title' => 'Recuperar Senha',
+            'sucesso' => 'Se este e-mail estiver cadastrado, você receberá um link de redefinição em instantes.'
+        ], 'none');
+    }
+
+    public function redefinirSenha(): void
+    {
+        $token = $this->getParam('token', '');
+        $user = $token ? (new UserModel())->findByResetToken($token) : null;
+
+        if (!$user) {
+            $this->view('login/redefinir-senha', [
+                'title' => 'Redefinir Senha',
+                'tokenInvalido' => true,
+            ], 'none');
+            return;
+        }
+
+        $this->view('login/redefinir-senha', [
+            'title' => 'Redefinir Senha',
+            'token' => $token,
+        ], 'none');
+    }
+
+    public function redefinirSenhaSalvar(): void
+    {
+        $token = $_POST['token'] ?? '';
+        $senha = $_POST['senha'] ?? '';
+        $confirmacao = $_POST['senha_confirmacao'] ?? '';
+
+        $userModel = new UserModel();
+        $user = $token ? $userModel->findByResetToken($token) : null;
+
+        if (!$user) {
+            $this->view('login/redefinir-senha', ['title' => 'Redefinir Senha', 'tokenInvalido' => true], 'none');
+            return;
+        }
+
+        if (strlen($senha) < 8 || $senha !== $confirmacao) {
+            $this->view('login/redefinir-senha', [
+                'title' => 'Redefinir Senha',
+                'token' => $token,
+                'erro' => 'As senhas devem ser iguais e ter pelo menos 8 caracteres.',
+            ], 'none');
+            return;
+        }
+
+        $userModel->redefinirSenha($user['id'], $senha);
+        header('Location: /login?redefinida=1');
+    }
+
+    private function urlBase(): string
+    {
+        $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off');
+        $protocolo = $https ? 'https://' : 'http://';
+        return $protocolo . ($_SERVER['HTTP_HOST'] ?? 'localhost');
     }
 }
