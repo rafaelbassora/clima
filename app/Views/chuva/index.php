@@ -44,11 +44,6 @@
     </div>
 </div>
 
-<div class="alert alert-info small py-2 mb-3">
-    <i class="bi bi-info-circle me-1"></i>
-    Os valores informados referem-se à chuva acumulada em 24 horas, aferida às 9h da manhã do dia seguinte.
-</div>
-
 <div class="weather-card fade-in-up">
     <div class="card-body p-0">
         <!-- Tabs Header -->
@@ -121,6 +116,12 @@
                         <span class="fs-2 fw-bold text-accent"><?= $chuvaManual['total'] ?></span>
                         <span class="text-muted ms-1">mm total</span>
                     </div>
+                </div>
+
+                <div class="alert alert-info small py-2 mb-4">
+                    <i class="bi bi-info-circle me-1"></i>
+                    Os valores do pluviômetro manual informados referem-se à chuva acumulada em 24 horas,
+                    aferida entre às 7 e às 9h da manhã do dia seguinte.
                 </div>
 
                 <?php if (!empty($chuvaManual['detalhe'])): ?>
