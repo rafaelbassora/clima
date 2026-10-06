@@ -1,0 +1,243 @@
+/**
+ * Clima Pereira Barreto — Main JavaScript
+ * AJAX real-time weather bar + clock + sidebar toggle
+ */
+
+document.addEventListener('DOMContentLoaded', () => {
+    initClock();
+    initAjaxRefresh();
+    initTooltips();
+
+    // Atualiza imediatamente quando a aba volta a ficar visível (evita relógio/dados travados ao alternar guias)
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') {
+            const clockEl = document.getElementById('topbar-clock');
+            if (clockEl) {
+                const now = new Date();
+                const h = String(now.getHours()).padStart(2, '0');
+                const m = String(now.getMinutes()).padStart(2, '0');
+                const s = String(now.getSeconds()).padStart(2, '0');
+                clockEl.innerHTML = `${h}:${m}<span class="clock-seconds">:${s}</span>`;
+            }
+            const local = new URLSearchParams(window.location.search).get('local') || '1';
+            fetchClimaAtual(local);
+        }
+    });
+});
+
+/**
+ * Inicializa os tooltips do Bootstrap
+ */
+function initTooltips() {
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
+    tooltipTriggerList.map(function (tooltipTriggerEl) {
+        return new bootstrap.Tooltip(tooltipTriggerEl, {
+            trigger: 'hover focus' // evita tooltip travado no touch do mobile
+        });
+    });
+}
+
+/**
+ * Relógio em tempo real
+ */
+function initClock() {
+    const clockEl = document.getElementById('topbar-clock');
+    if (!clockEl) return;
+
+    function updateClock() {
+        const now = new Date();
+        const h = String(now.getHours()).padStart(2, '0');
+        const m = String(now.getMinutes()).padStart(2, '0');
+        const s = String(now.getSeconds()).padStart(2, '0');
+        
+        // Atualiza mantendo a estrutura para o CSS esconder os segundos no mobile
+        clockEl.innerHTML = `${h}:${m}<span class="clock-seconds">:${s}</span>`;
+    }
+
+    updateClock();
+    setInterval(updateClock, 1000);
+}
+
+/**
+ * AJAX auto-refresh da barra fixa (temperatura + umidade)
+ */
+function initAjaxRefresh() {
+    const refreshMs = window.CLIMA_CONFIG?.refreshMs || 30000; // Reduzido para 30s para melhor resposta
+    const local = new URLSearchParams(window.location.search).get('local') || '1';
+
+    // Primeiro refresh imediato
+    fetchClimaAtual(local);
+
+    // Auto-refresh periódico
+    setInterval(() => fetchClimaAtual(local), refreshMs);
+}
+
+async function fetchClimaAtual(local) {
+    const basePath = (window.CLIMA_CONFIG?.basePath || '').replace(/\/+$/, '');
+    const apiPath = `/api/clima-atual?local=${encodeURIComponent(local)}&_t=${Date.now()}`;
+    
+    let url = `${basePath}${apiPath}`;
+    console.debug('Tentando carregar clima de:', url);
+    
+    try {
+        let response = await fetch(url, {
+            headers: { 'Accept': 'application/json' },
+            cache: 'no-cache'
+        });
+
+        if (!response.ok) {
+            console.warn('[Clima] Erro na API:', response.status);
+            return;
+        }
+
+        const data = await response.json();
+        if (!data.success) return;
+
+        // Atualiza elementos do topbar
+        const tempEl = document.getElementById('topbar-temp');
+        const humEl = document.getElementById('topbar-hum');
+        const barEl = document.getElementById('topbar-bar');
+        const windEl = document.getElementById('topbar-wind');
+        const uvEl = document.getElementById('topbar-uv');
+        const updatedEl = document.getElementById('topbar-updated');
+
+        const flash = (el) => {
+            el.closest('.topbar-metric')?.classList.add('topbar-flash');
+            setTimeout(() => el.closest('.topbar-metric')?.classList.remove('topbar-flash'), 600);
+        };
+
+        if (tempEl && data.temperatura) {
+            tempEl.textContent = `${data.temperatura}°C`;
+            flash(tempEl);
+        }
+
+        if (humEl && data.umidade) {
+            humEl.textContent = `${data.umidade}%`;
+            flash(humEl);
+        }
+
+        if (barEl && data.barometro) {
+            barEl.textContent = `${data.barometro} hPa`;
+            flash(barEl);
+        }
+
+        if (windEl && data.vento) {
+            windEl.textContent = `${data.vento} (${data.rajada || data.vento}) km/h ${data.direcao}`;
+            flash(windEl);
+        }
+
+        if (uvEl && data.uv !== undefined) {
+            uvEl.textContent = `UV: ${data.uv}`;
+            flash(uvEl);
+        }
+
+        // Home View specific metrics
+        const homeTemperatura = document.getElementById('home-temperatura');
+        const homeSensacao = document.getElementById('home-sensacao');
+        const homeOrvalho = document.getElementById('home-orvalho');
+        const homeChuvaDia = document.getElementById('home-chuva-dia');
+        const nowcastContainer = document.getElementById('nowcasting-container');
+        const nowcastMsg = document.getElementById('nowcasting-msg');
+        const nowcastTime = document.getElementById('nowcasting-time');
+
+        // Nowcasting Sync (Priorizado)
+        if (nowcastContainer) {
+            if (data.nowcasting && data.nowcasting.mensagem) {
+                if (nowcastMsg) nowcastMsg.textContent = data.nowcasting.mensagem;
+                if (nowcastTime && data.nowcasting.created_at) {
+                    const parts = data.nowcasting.created_at.split(' ');
+                    if (parts[1]) {
+                        const timeParts = parts[1].split(':');
+                        nowcastTime.textContent = `${timeParts[0]}:${timeParts[1]}`;
+                    }
+                }
+                nowcastContainer.style.display = 'block';
+            } else {
+                nowcastContainer.style.display = 'none';
+            }
+        }
+
+        if (homeTemperatura && data.temperatura !== undefined) {
+            homeTemperatura.textContent = `${formatNumber(data.temperatura)}°C`;
+        }
+
+        if (homeSensacao && data.sensacao !== undefined) {
+            homeSensacao.textContent = `${formatNumber(data.sensacao)}°C`;
+        }
+
+        const homeUmidadePainel = document.getElementById('home-umidade-painel');
+        if (homeUmidadePainel && data.umidade !== undefined) {
+            let umid = data.umidade;
+            let status = 'PERIGO';
+            let colorClass = 'text-danger';
+            if (umid > 60) {
+                status = 'BOA';
+                colorClass = 'text-success';
+            } else if (umid > 30) {
+                status = 'REGULAR';
+                colorClass = 'text-primary';
+            } else if (umid > 20) {
+                status = 'ATENÇÃO';
+                colorClass = 'text-warning';
+            }
+            
+            // Remover classes de cor antigas e adicionar a nova
+            homeUmidadePainel.classList.remove('text-success', 'text-primary', 'text-warning', 'text-danger');
+            homeUmidadePainel.classList.add(colorClass);
+            
+            homeUmidadePainel.innerHTML = `${umid}% <span style="font-size: 0.6rem; opacity: 0.8; font-weight: 500;" id="home-umidade-status">${status}</span>`;
+        }
+
+        if (homeOrvalho && data.orvalho !== undefined) {
+            homeOrvalho.textContent = `${formatNumber(data.orvalho)}°C`;
+        }
+
+        if (homeChuvaDia && data.chuva_dia !== undefined) {
+            homeChuvaDia.textContent = `${formatNumber(data.chuva_dia)}mm`;
+        }
+        
+        const homeVentoMax = document.getElementById('home-vento-max');
+        if (homeVentoMax && data.vento_max_dia !== undefined) {
+            homeVentoMax.innerHTML = `${data.vento_max_dia} <span style="font-size: 0.6rem;">km/h</span>`;
+        }
+
+        const homeVentoAvg = document.getElementById('home-vento-avg');
+        if (homeVentoAvg && data.vento_avg_dia !== undefined) {
+            homeVentoAvg.innerHTML = `${data.vento_avg_dia} <span style="font-size: 0.6rem;">km/h</span>`;
+        }
+        
+        const homeEtHoje = document.getElementById('home-et-hoje');
+        if (homeEtHoje && data.et_hoje !== undefined) {
+            homeEtHoje.textContent = `${Number(data.et_hoje).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}mm`;
+        }
+
+        const homeDirecaoTexto = document.getElementById('home-direcao-texto');
+        if (homeDirecaoTexto && data.direcao) {
+            homeDirecaoTexto.textContent = data.direcao;
+        }
+
+        const homeDirecaoSeta = document.getElementById('home-direcao-seta');
+        if (homeDirecaoSeta && data.direcao_graus !== undefined) {
+            homeDirecaoSeta.style.transform = `rotate(${data.direcao_graus}deg)`;
+        }
+
+        const mobileDataHora = document.getElementById('mobile-data-hora');
+        if (mobileDataHora && data.data_hora) {
+            mobileDataHora.innerHTML = `<i class="bi bi-clock-history me-1"></i>${data.data_hora}`;
+        }
+
+        if (updatedEl && data.atualizado) {
+            updatedEl.textContent = `atualizado: ${data.atualizado}`;
+        }
+
+    } catch (err) {
+        console.warn('[Clima] Erro ao atualizar dados:', err.message);
+    }
+}
+
+/**
+ * Formata número para padrão brasileiro (1.2 -> 1,2)
+ */
+function formatNumber(num) {
+    return Number(num).toLocaleString('pt-BR', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+}
