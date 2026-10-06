@@ -15,11 +15,11 @@
             estação aparece apenas com um código e o bairro.
         </p>
     </div>
-    <div class="col-md-4 text-md-end">
+    <div class="col-md-4 text-md-end d-flex flex-column flex-md-row gap-2 justify-content-md-end">
         <a href="<?= url('/pluviometro-cidadao/cadastro') ?>" class="btn btn-primary rounded-pill px-4">
             <i class="bi bi-plus-circle me-1"></i> Cadastrar meu Pluviômetro
         </a>
-        <a href="<?= url('/pluviometro-cidadao/login') ?>" class="btn btn-outline-secondary rounded-pill px-4 mt-2 mt-md-0">
+        <a href="<?= url('/pluviometro-cidadao/login') ?>" class="btn btn-outline-secondary rounded-pill px-4">
             Já sou cadastrado
         </a>
     </div>
