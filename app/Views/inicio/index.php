@@ -41,7 +41,7 @@ $localNome = match($local) {
             <?php else: ?>
                 <span class="text-muted small">Previsão não disponível no momento.</span>
             <?php endif; ?>
-            <br><small class="text-muted">Fonte: CPTEC/INPE</small>
+            <br><small class="text-muted">Fonte: CPTEC/INPE ou INMET</small>
         </div>
         <a href="/previsao-do-tempo?local=<?= htmlspecialchars($local) ?>" class="badge-link">
             Previsão 7 dias <i class="bi bi-arrow-right"></i>

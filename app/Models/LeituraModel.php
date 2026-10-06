@@ -1099,7 +1099,7 @@ class LeituraModel
             return null;
 
         $p = $previsoes[0]; // Hoje
-        $condition = $this->getWeatherCondition($p['tempo']);
+        $condition = $this->getWeatherConditionSmart($p['tempo']);
 
         return [
             'temp_max' => $p['maxima'],
@@ -1155,6 +1155,39 @@ class LeituraModel
         ];
 
         return $conditions[$sigla] ?? ['description' => 'Sigla não encontrada', 'icon' => 'bi-question-circle'];
+    }
+
+    /**
+     * Resolve a condição do tempo tanto pro formato antigo (sigla do CPTEC/INPE,
+     * ex: 'pn', 'c') quanto pro novo (texto livre do INMET, ex: 'Chuva isolada').
+     */
+    public function getWeatherConditionSmart(string $valor): array
+    {
+        $conditions = $this->getWeatherCondition($valor);
+        if ($conditions['description'] !== 'Sigla não encontrada') {
+            return $conditions;
+        }
+
+        $texto = mb_strtolower($valor);
+        $icon = 'bi-clouds';
+
+        if (str_contains($texto, 'trovoada') || str_contains($texto, 'tempestade')) {
+            $icon = 'bi-cloud-lightning-rain';
+        } elseif (str_contains($texto, 'chuvisco')) {
+            $icon = 'bi-cloud-drizzle';
+        } elseif (str_contains($texto, 'chuva')) {
+            $icon = 'bi-cloud-rain';
+        } elseif (str_contains($texto, 'nevoeiro') || str_contains($texto, 'neblina')) {
+            $icon = 'bi-cloud-fog';
+        } elseif (str_contains($texto, 'encoberto') || str_contains($texto, 'muitas nuvens') || str_contains($texto, 'nublado')) {
+            $icon = 'bi-cloud';
+        } elseif (str_contains($texto, 'poucas nuvens') || str_contains($texto, 'parcialmente')) {
+            $icon = 'bi-cloud-sun';
+        } elseif (str_contains($texto, 'sol') || str_contains($texto, 'claro') || str_contains($texto, 'ensolarado')) {
+            $icon = 'bi-sun';
+        }
+
+        return ['description' => $valor !== '' ? $valor : 'Sem dados', 'icon' => $icon];
     }
 
     public function getDiaSemana($data)

@@ -20,7 +20,7 @@
                         por estações automatizadas e estão sujeitos a variações técnicas. A Prefeitura do Município de
                         Pereira Barreto não se responsabiliza por decisões (pessoais, agrícolas ou comerciais) tomadas
                         com base nestas leituras. Para alertas e emergências, consulte sempre os canais oficiais da
-                        Defesa Civil e os boletins do CPTEC/INPE.</p>
+                        Defesa Civil e os boletins do CPTEC/INPE ou INMET.</p>
                 </section>
 
                 <section class="mb-5">

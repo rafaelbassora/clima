@@ -34,7 +34,7 @@ class PrevisaoController extends Controller
     {
         $formatted = [];
         foreach ($raw as $p) {
-            $condition = $model->getWeatherCondition($p['tempo']);
+            $condition = $model->getWeatherConditionSmart($p['tempo']);
             $formatted[] = [
                 'dia'        => $p['dia'],
                 'data_fmt'   => date('d/m', strtotime($p['dia'])),

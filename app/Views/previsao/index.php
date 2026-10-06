@@ -6,7 +6,7 @@
 <div class="row align-items-center mb-4 g-3">
     <div class="col-md-6">
         <h4 class="mb-0"><i class="bi bi-umbrella-fill text-primary"></i> Previsão do Tempo</h4>
-        <small class="text-muted">Dados fornecidos pelo CPTEC / INPE</small>
+        <small class="text-muted">Dados fornecidos pelo CPTEC/INPE ou INMET</small>
     </div>
     <div class="col-md-6 text-md-end">
         <?php if (!empty($previsoes)): ?>
@@ -21,7 +21,7 @@
     <div class="weather-card text-center py-5 fade-in-up">
         <i class="bi bi-cloud-slash display-1 text-muted opacity-25"></i>
         <h5 class="mt-3 text-muted">Nenhuma previsão disponível no momento.</h5>
-        <p class="small text-muted">Aguardando sincronização com a API do CPTEC/INPE.</p>
+        <p class="small text-muted">Aguardando sincronização com a API do CPTEC/INPE ou INMET.</p>
     </div>
 <?php else: ?>
     <!-- Próximos Dias -->
@@ -107,7 +107,7 @@
     <div class="alert alert-info mt-5 border-0 bg-info bg-opacity-10 d-flex gap-3 align-items-center">
         <i class="bi bi-info-circle-fill text-info fs-4"></i>
         <div class="small">
-            <strong>Nota:</strong> A previsão é atualizada automaticamente de acordo com as janelas de processamento do CPTEC/INPE para a cidade de <strong><?= $previsoes[0]['cidade'] ?></strong>.
+            <strong>Nota:</strong> A previsão é atualizada automaticamente de acordo com as janelas de processamento do CPTEC/INPE ou INMET para a cidade de <strong><?= $previsoes[0]['cidade'] ?></strong>.
         </div>
     </div>
 <?php endif; ?>
