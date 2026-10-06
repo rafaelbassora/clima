@@ -1287,20 +1287,43 @@ class LeituraModel
         );
     }
 
-    public function saveNowcasting(string $local, string $mensagem, int $minutos, string $tipo = 'firme'): bool
+    public function saveNowcasting(string $local, string $mensagem, int $minutos, string $tipo = 'firme', ?array $componentes = null): bool
     {
         // Usamos rawQuery para garantir que o MySQL processe NOW() e INTERVAL corretamente
-        $sql = "INSERT INTO nowcasting (`local`, `mensagem`, `tipo_previsao`, `valido_ate`, `created_at`) 
-                VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NOW())";
+        $sql = "INSERT INTO nowcasting (`local`, `mensagem`, `tipo_previsao`, `valido_ate`, `created_at`, `score`, `diferenca_orvalho`, `taxa_pressao`, `taxa_vento`)
+                VALUES (?, ?, ?, DATE_ADD(NOW(), INTERVAL ? MINUTE), NOW(), ?, ?, ?, ?)";
 
         $this->db->rawQuery($sql, [
             $local,
             $mensagem,
             $tipo,
-            (int) $minutos
+            (int) $minutos,
+            $componentes['score'] ?? null,
+            $componentes['diferenca_orvalho'] ?? null,
+            $componentes['taxa_pressao'] ?? null,
+            $componentes['taxa_vento'] ?? null,
         ]);
 
         return $this->db->getLastError() === '';
+    }
+
+    /**
+     * Busca previsões de chuva já validadas, com os componentes do score,
+     * pra recalibração automática dos limiares (ver NowcastConfigModel).
+     */
+    public function getDadosParaCalibracao(int $dias = 90, int $limit = 5000): array
+    {
+        return $this->db->rawQuery(
+            "SELECT score, acertou
+             FROM nowcasting
+             WHERE tipo_previsao = 'chuva'
+               AND score IS NOT NULL
+               AND acertou IS NOT NULL
+               AND created_at >= DATE_SUB(NOW(), INTERVAL ? DAY)
+             ORDER BY created_at DESC
+             LIMIT ?",
+            [$dias, $limit]
+        );
     }
 
     /**

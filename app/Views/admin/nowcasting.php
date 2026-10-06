@@ -1,3 +1,48 @@
+<?php if (!empty($_SESSION['nowcast_recalibrado'])): ?>
+    <?php $r = $_SESSION['nowcast_recalibrado']; unset($_SESSION['nowcast_recalibrado']); ?>
+    <?php if ($r['aplicado']): ?>
+        <div class="alert alert-success">
+            <i class="bi bi-check-circle me-1"></i>
+            Recalibrado com <?= $r['amostras'] ?> amostras (precisão geral: <?= $r['precisao_geral'] ?>%).
+            Novos limiares — Alta: <?= $r['limiar_alta'] ?>, Moderada: <?= $r['limiar_moderada'] ?>, Baixa: <?= $r['limiar_baixa'] ?>.
+        </div>
+    <?php else: ?>
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle me-1"></i>
+            Não recalibrado: <?= htmlspecialchars($r['motivo']) ?> (amostras disponíveis: <?= $r['amostras'] ?>).
+        </div>
+    <?php endif; ?>
+<?php endif; ?>
+
+<div class="card border-0 shadow-sm rounded-4 mb-4">
+    <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+            <div>
+                <h2 class="h5 fw-bold mb-2">
+                    <i class="bi bi-sliders me-2"></i>Calibração Automática
+                </h2>
+                <p class="small text-muted mb-1">
+                    Os limiares de decisão (score mínimo pra cada categoria) se ajustam sozinhos
+                    toda semana, com base na precisão real das últimas previsões.
+                </p>
+                <p class="small mb-0">
+                    <strong>Alta:</strong> score ≥ <?= $nowcastConfig['limiar_alta'] ?>
+                    &nbsp;·&nbsp; <strong>Moderada:</strong> score ≥ <?= $nowcastConfig['limiar_moderada'] ?>
+                    &nbsp;·&nbsp; <strong>Baixa:</strong> score ≥ <?= $nowcastConfig['limiar_baixa'] ?>
+                    <br>
+                    <span class="text-muted">
+                        Última calibração: <?= $nowcastConfig['atualizado_em'] ? date('d/m/Y H:i', strtotime($nowcastConfig['atualizado_em'])) : 'nunca' ?>
+                        (<?= (int) ($nowcastConfig['amostras_usadas'] ?? 0) ?> amostras)
+                    </span>
+                </p>
+            </div>
+            <a href="/admin/nowcasting/recalibrar" class="btn btn-primary rounded-pill px-4" onclick="return confirm('Recalibrar agora com os dados mais recentes?')">
+                <i class="bi bi-arrow-repeat me-1"></i>Recalibrar Agora
+            </a>
+        </div>
+    </div>
+</div>
+
 <div class="card border-0 shadow-sm rounded-4 mb-4">
     <div class="card-body p-4">
         <h2 class="h4 fw-bold mb-4 text-primary">

@@ -139,6 +139,7 @@ $router->get('/admin/noticia/edit',   'AdminController',        'noticiaEdit');
 $router->post('/admin/noticia/edit',  'AdminController',        'noticiaEdit');
 $router->get('/admin/noticia/delete', 'AdminController',        'noticiaDelete');
 $router->get('/admin/nowcasting',     'AdminController',        'nowcasting');
+$router->get('/admin/nowcasting/recalibrar', 'AdminController', 'nowcastingRecalibrar');
 
 // Usuários Admin
 $router->get('/admin/usuarios',        'AdminController',        'usuarios');
@@ -169,6 +170,7 @@ $router->post('/api/nowcasting',     'ApiController',         'postNowcasting');
 $router->get('/api/nowcasting-test', 'ApiController',         'testNowcasting');
 $router->get('/api/calculate-nowcast', 'ApiController',      'calculateNowcast');
 $router->get('/api/validate-nowcasting', 'ApiController',      'validateNowcastings');
+$router->get('/api/recalibrar-nowcasting', 'ApiController',    'recalibrarNowcasting');
 $router->get('/api/circuit-breaker',   'ApiController',      'circuitBreaker');
 $router->get('/api/preload-cache',     'ApiController',      'preloadCache');
 $router->post('/api/umidade-solo',     'ApiController',      'postUmidadeSolo');

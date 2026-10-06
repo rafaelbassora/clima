@@ -4,6 +4,38 @@ namespace App\Services;
 
 class NowcastService
 {
+    private int $limiarAlta;
+    private int $limiarModerada;
+    private int $limiarBaixa;
+
+    /**
+     * $limiares: ['limiar_alta' => int, 'limiar_moderada' => int, 'limiar_baixa' => int].
+     * Se não informado, usa os padrões — mas o normal é vir da nowcasting_config,
+     * que se autoajusta com base no desempenho real (ver ApiController::recalibrarNowcasting).
+     */
+    public function __construct(array $limiares = [])
+    {
+        $this->limiarAlta = (int) ($limiares['limiar_alta'] ?? 4);
+        $this->limiarModerada = (int) ($limiares['limiar_moderada'] ?? 2);
+        $this->limiarBaixa = (int) ($limiares['limiar_baixa'] ?? 1);
+    }
+
+    /**
+     * Pesos recalibrados em 06/10/2026 com base em análise de 30 dias de dados reais
+     * (leituras_completas, ~43 mil amostras, local=1):
+     *
+     * - Diferença Temp-Orvalho: sinal real, mas modesto. <=1.0°C deu 16,6% de chance de
+     *   chuva na hora seguinte (vs. ~4,5% de base geral) — por isso é o sinal principal,
+     *   mas sozinho não justifica "alta probabilidade".
+     * - Queda de pressão em 1h: sinal fraco e, nos dados, até invertido (pressão SUBINDO
+     *   teve mais chuva na sequência, 5,4%, que a maioria das faixas de queda). Peso
+     *   reduzido bastante — não é mais usado como driver principal.
+     * - Tendência de vento: mantido como sinal terciário de menor peso (não testado com
+     *   a mesma profundidade; preferiu-se ser conservador).
+     *
+     * "Alta probabilidade" agora exige o sinal principal (orvalho) CONFIRMADO por pelo
+     * menos mais um sinal, não dispara mais sozinho.
+     */
     public function calcularTendencia(array $atual, array $anterior, int $minutos = 60, bool $chuvaRecente = false): array
     {
         // Normalização de tempo
@@ -51,55 +83,52 @@ class NowcastService
         // =========================
         $score = 0;
 
-        // 🌡️ Saturação do ar (peso alto)
+        // 🌡️ Saturação do ar (sinal principal, mas com peso realista)
         $diferencaOrvalho = $tempAtual - $orvalhoAtual;
 
         if ($diferencaOrvalho <= 1.0)
-            $score += 4;
-        elseif ($diferencaOrvalho <= 2.0)
             $score += 3;
         elseif ($diferencaOrvalho <= 3.0)
             $score += 2;
         elseif ($diferencaOrvalho <= 4.0)
             $score += 1;
 
-        // 📉 Tendência de pressão
+        // 📉 Tendência de pressão (sinal secundário, peso bem reduzido)
         $taxaQuedaPressao = ($pressaoAnt - $pressaoAtual) / $horasDelta;
 
-        if ($taxaQuedaPressao >= 2.0)
-            $score += 3;
-        elseif ($taxaQuedaPressao >= 1.0)
-            $score += 2;
-        elseif ($taxaQuedaPressao >= 0.5)
+        if ($taxaQuedaPressao >= 1.0)
             $score += 1;
 
-        // 🌬️ Tendência de vento
+        // 🌬️ Tendência de vento (sinal terciário)
         $taxaVento = ($ventoAtual - $ventoAnt) / $horasDelta;
 
         if ($taxaVento >= 20)
-            $score += 3;
-        elseif ($taxaVento >= 10)
-            $score += 2;
-        elseif ($taxaVento >= 5)
             $score += 1;
 
         // =========================
         // 3. DECISÃO FINAL
+        // Máximo possível: 3 (orvalho) + 1 (pressão) + 1 (vento) = 5
+        // Limiares vêm da nowcasting_config (se autoajustam com o tempo).
         // =========================
 
-        if ($score >= 7) {
-            return ['mensagem' => "Alta probabilidade de chuva", 'tipo' => 'chuva'];
+        if ($score >= $this->limiarAlta) {
+            $mensagem = "Alta probabilidade de chuva";
+        } elseif ($score >= $this->limiarModerada) {
+            $mensagem = "Chance moderada de chuva";
+        } elseif ($score >= $this->limiarBaixa) {
+            $mensagem = "Baixa chance de chuva";
+        } else {
+            return ['mensagem' => "Tempo firme", 'tipo' => 'firme'];
         }
 
-        if ($score >= 4) {
-            return ['mensagem' => "Chance moderada de chuva", 'tipo' => 'chuva'];
-        }
-
-        if ($score >= 2) {
-            return ['mensagem' => "Baixa chance de chuva", 'tipo' => 'chuva'];
-        }
-
-        return ['mensagem' => "Tempo firme", 'tipo' => 'firme'];
+        return [
+            'mensagem' => $mensagem,
+            'tipo' => 'chuva',
+            'score' => $score,
+            'diferenca_orvalho' => $diferencaOrvalho,
+            'taxa_pressao' => $taxaQuedaPressao,
+            'taxa_vento' => $taxaVento,
+        ];
     }
 
     private function sanitize($value): float

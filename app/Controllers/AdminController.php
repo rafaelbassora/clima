@@ -347,8 +347,20 @@ class AdminController extends Controller
             'activeMenu' => 'nowcasting',
             'title' => 'Estatísticas de Nowcasting',
             'stats' => $stats,
-            'historico' => $historico
+            'historico' => $historico,
+            'nowcastConfig' => (new \App\Models\NowcastConfigModel())->getConfig(),
         ], 'admin');
+    }
+
+    public function nowcastingRecalibrar(): void
+    {
+        $resultado = (new \App\Services\NowcastCalibrationService())->recalibrar(
+            $this->leituraModel,
+            new \App\Models\NowcastConfigModel(),
+            true
+        );
+        $_SESSION['nowcast_recalibrado'] = $resultado;
+        header('Location: /admin/nowcasting');
     }
 
     // === USUÁRIOS ===

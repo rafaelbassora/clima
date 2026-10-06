@@ -140,34 +140,35 @@ class ApiController extends Controller
             return;
         }
 
-        $service = new \App\Services\NowcastService();
+        $nowcastConfig = (new \App\Models\NowcastConfigModel())->getConfig();
+        $service = new \App\Services\NowcastService($nowcastConfig);
         $chuvaRecente = $model->wasRainingRecently($local, 10);
         $resTendencia = $service->calcularTendencia($atual, $anterior, 60, $chuvaRecente);
         $tendencia = $resTendencia['mensagem'];
         $tipo      = $resTendencia['tipo'];
         
         $minutos = (int)$this->getParam('minutos', 180);
-        $format  = $this->getParam('format', 'hours');
 
-        if ($format === 'minutes') {
-            $textoTempo = "{$minutos} minutos";
+        // Só expressa em horas quando dá uma hora "redonda" (sem decimais tipo "1.5 horas"
+        // ou mistura errada de gênero tipo "as próximas 90 minutos"); caso contrário usa minutos.
+        if ($minutos >= 60 && $minutos % 60 === 0) {
+            $horas = (int) ($minutos / 60);
+            $textoTempo = $horas === 1 ? "1 hora" : "{$horas} horas";
+            $preposicao = $horas === 1 ? 'a próxima' : 'as próximas';
         } else {
-            $horas = round($minutos / 60, 1);
-            $textoTempo = $horas == 1 ? "1 hora" : "{$horas} horas";
+            $textoTempo = $minutos === 1 ? "1 minuto" : "{$minutos} minutos";
+            $preposicao = $minutos === 1 ? 'o próximo' : 'os próximos';
         }
 
-        // Gramática: "os próximos" para minutos (masculino), "as próximas" para horas (feminino)
-        $preposicao = ($format === 'minutes') ? 'os próximos' : 'as próximas';
         $mensagemCompleta = "{$tendencia} para {$preposicao} {$textoTempo}";
         
-        $success = $model->saveNowcasting($local, $mensagemCompleta, $minutos, $tipo);
+        $success = $model->saveNowcasting($local, $mensagemCompleta, $minutos, $tipo, $resTendencia);
 
         if ($success) {
             $this->json([
                 'success'   => true,
                 'tendencia' => $tendencia,
                 'minutos'   => $minutos,
-                'format'    => $format,
                 'mensagem'  => $mensagemCompleta
             ]);
         } else {
@@ -206,10 +207,38 @@ class ApiController extends Controller
             $validados++;
         }
 
+        // Recalibra os limiares automaticamente, no máximo 1x por semana
+        $configModel = new \App\Models\NowcastConfigModel();
+        $configAtual = $configModel->getConfig();
+        $ultimaAtualizacao = $configAtual['atualizado_em'] ?? null;
+        $recalibrado = null;
+        if (!$ultimaAtualizacao || strtotime($ultimaAtualizacao) <= strtotime('-7 days')) {
+            $recalibrado = (new \App\Services\NowcastCalibrationService())->recalibrar($model, $configModel);
+        }
+
         $this->json([
             'success'   => true,
             'validados' => $validados,
-            'stats'     => $model->getNowcastingStats()
+            'stats'     => $model->getNowcastingStats(),
+            'recalibrado' => $recalibrado,
+        ]);
+    }
+
+    /**
+     * GET /api/recalibrar-nowcasting
+     * Recalibra os limiares de decisão (alta/moderada/baixa) com base na precisão
+     * real recente. Também roda sozinho (1x por semana) dentro do validateNowcastings.
+     */
+    public function recalibrarNowcasting(): void
+    {
+        $this->verifyCronToken();
+        $model = new LeituraModel();
+        $configModel = new \App\Models\NowcastConfigModel();
+        $resultado = (new \App\Services\NowcastCalibrationService())->recalibrar($model, $configModel, true);
+
+        $this->json([
+            'success' => true,
+            'resultado' => $resultado,
         ]);
     }
 
