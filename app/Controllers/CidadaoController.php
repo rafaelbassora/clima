@@ -25,11 +25,34 @@ class CidadaoController extends Controller
         $year = (int) date('Y');
         $month = (int) date('m');
 
+        $resumoMensal = $this->chuvaModel->getResumoMensalPublico($year, $month);
+        $mediaCidade = count($resumoMensal) > 0
+            ? array_sum(array_column($resumoMensal, 'total_mm')) / count($resumoMensal)
+            : 0;
+
         $this->view('cidadao/index', [
             'pageTitle' => 'Pluviômetro Cidadão',
-            'resumoMensal' => $this->chuvaModel->getResumoMensalPublico($year, $month),
-            'ultimos' => $this->chuvaModel->getUltimosPublicos(30),
+            'mediaCidade' => $mediaCidade,
+            'totalEstacoes' => count($resumoMensal),
+            'amostra' => $this->chuvaModel->getAmostraStatusHoje(10),
             'mesAno' => $month . '/' . $year,
+        ], 'main');
+    }
+
+    public function estacao(): void
+    {
+        $codigo = $this->getParam('codigo', '');
+        $estacao = $codigo ? $this->model->findEstacaoAprovadaPorCodigo($codigo) : null;
+
+        if (!$estacao) {
+            header('Location: /pluviometro-cidadao');
+            return;
+        }
+
+        $this->view('cidadao/estacao', [
+            'pageTitle' => 'Estação ' . $estacao['station_code'],
+            'estacao' => $estacao,
+            'historico' => $this->chuvaModel->getHistoricoPorEstacao($codigo),
         ], 'main');
     }
 
@@ -172,6 +195,7 @@ class CidadaoController extends Controller
         $medida = (float) str_replace(',', '.', $_POST['medida_mm'] ?? '0');
         $granizo = isset($_POST['granizo']);
         $chuvaMansa = isset($_POST['chuva_mansa']);
+        $chuvaForte = isset($_POST['chuva_forte']);
         $observacao = trim($_POST['observacao'] ?? '');
 
         if ($medida < 0 || $medida > 500 || $data > date('Y-m-d')) {
@@ -179,7 +203,57 @@ class CidadaoController extends Controller
             return;
         }
 
-        $this->chuvaModel->lancar((int) $_SESSION['cidadao_id'], $data, $medida, $granizo, $chuvaMansa, $observacao);
+        $this->chuvaModel->lancar((int) $_SESSION['cidadao_id'], $data, $medida, $granizo, $chuvaMansa, $chuvaForte, $observacao);
+        header('Location: /pluviometro-cidadao/painel');
+    }
+
+    public function painelEditar(): void
+    {
+        if (!$this->exigirLogin()) {
+            return;
+        }
+
+        $id = (int) $this->getParam('id');
+        $cidadaoId = (int) $_SESSION['cidadao_id'];
+        $item = $this->chuvaModel->getByIdDoCidadao($id, $cidadaoId);
+
+        if (!$item) {
+            header('Location: /pluviometro-cidadao/painel');
+            return;
+        }
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $data = $_POST['data'] ?? $item['data'];
+            $medida = (float) str_replace(',', '.', $_POST['medida_mm'] ?? '0');
+            $granizo = isset($_POST['granizo']);
+            $chuvaMansa = isset($_POST['chuva_mansa']);
+            $chuvaForte = isset($_POST['chuva_forte']);
+            $observacao = trim($_POST['observacao'] ?? '');
+
+            if ($medida < 0 || $medida > 500 || $data > date('Y-m-d')) {
+                header('Location: /pluviometro-cidadao/painel');
+                return;
+            }
+
+            $this->chuvaModel->atualizar($id, $cidadaoId, $data, $medida, $granizo, $chuvaMansa, $chuvaForte, $observacao);
+            header('Location: /pluviometro-cidadao/painel');
+            return;
+        }
+
+        $this->view('cidadao/editar', [
+            'pageTitle' => 'Editar Lançamento',
+            'item' => $item,
+        ], 'main');
+    }
+
+    public function painelExcluir(): void
+    {
+        if (!$this->exigirLogin()) {
+            return;
+        }
+
+        $id = (int) $this->getParam('id');
+        $this->chuvaModel->excluir($id, (int) $_SESSION['cidadao_id']);
         header('Location: /pluviometro-cidadao/painel');
     }
 

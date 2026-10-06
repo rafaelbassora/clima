@@ -43,6 +43,17 @@ class CidadaoModel
         return $this->db->orderBy('station_code', 'ASC')->get('cidadaos');
     }
 
+    /**
+     * Busca uma estação aprovada pelo código (sem nenhum dado pessoal), pra página pública.
+     */
+    public function findEstacaoAprovadaPorCodigo(string $stationCode): ?array
+    {
+        $this->db->where('station_code', $stationCode);
+        $this->db->where('status', 'aprovado');
+        $item = $this->db->getOne('cidadaos', 'station_code, bairro, cidade, uf, approved_at');
+        return $item ?: null;
+    }
+
     public function criar(array $data): bool
     {
         $now = date('Y-m-d H:i:s');

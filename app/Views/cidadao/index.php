@@ -1,6 +1,7 @@
 <?php
-/** @var array $resumoMensal */
-/** @var array $ultimos */
+/** @var float $mediaCidade */
+/** @var int $totalEstacoes */
+/** @var array $amostra */
 /** @var string $mesAno */
 ?>
 
@@ -25,72 +26,66 @@
     </div>
 </div>
 
-<div class="weather-card fade-in-up mb-4">
-    <div class="card-header-custom">
-        <i class="bi bi-trophy-fill text-warning"></i>
-        Acumulado do Mês (<?= htmlspecialchars($mesAno) ?>)
+<div class="alert bg-primary bg-opacity-10 border border-primary border-opacity-20 d-flex align-items-center gap-3 p-4 mb-4 fade-in-up">
+    <div class="bg-primary bg-opacity-25 p-3 rounded-circle text-primary">
+        <i class="bi bi-droplet-half fs-3"></i>
     </div>
-    <div class="card-body p-0">
-        <div class="table-responsive">
-            <table class="table-weather">
-                <thead>
-                    <tr>
-                        <th>Estação</th>
-                        <th>Bairro</th>
-                        <th>Total (mm)</th>
-                        <th>Última Leitura</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <?php if (empty($resumoMensal)): ?>
-                        <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">
-                                Nenhum dado lançado este mês ainda. Seja o primeiro a cadastrar!
-                            </td>
-                        </tr>
-                    <?php endif; ?>
-                    <?php foreach ($resumoMensal as $row): ?>
-                        <tr>
-                            <td class="fw-bold"><?= htmlspecialchars($row['station_code']) ?></td>
-                            <td><?= htmlspecialchars($row['bairro']) ?></td>
-                            <td><strong><?= number_format((float) $row['total_mm'], 2, ',', '.') ?> mm</strong></td>
-                            <td><?= date('d/m/Y', strtotime($row['ultima_data'])) ?></td>
-                        </tr>
-                    <?php endforeach; ?>
-                </tbody>
-            </table>
-        </div>
+    <div>
+        <h5 class="mb-0 fw-bold">
+            Média da cidade: <span class="text-primary"><?= number_format($mediaCidade, 2, ',', '.') ?> mm</span>
+        </h5>
+        <p class="mb-0 text-muted small">
+            Média do acumulado de <?= $totalEstacoes ?> estação(ões) cidadã(s) em <?= htmlspecialchars($mesAno) ?>.
+        </p>
     </div>
 </div>
 
 <div class="weather-card fade-in-up">
     <div class="card-header-custom">
-        <i class="bi bi-clock-history"></i>
-        Últimos Lançamentos
+        <i class="bi bi-geo-alt-fill"></i>
+        Situação de Hoje (amostra de estações)
     </div>
     <div class="card-body p-0">
         <div class="table-responsive">
             <table class="table-weather">
                 <thead>
                     <tr>
-                        <th>Data</th>
-                        <th>Estação</th>
+                        <th>Código</th>
                         <th>Bairro</th>
-                        <th>mm</th>
+                        <th>Hoje</th>
+                        <th>Eventos</th>
+                        <th></th>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php if (empty($ultimos)): ?>
+                    <?php if (empty($amostra)): ?>
                         <tr>
-                            <td colspan="4" class="text-center py-4 text-muted">Nenhum lançamento ainda.</td>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                Nenhuma estação cadastrada ainda. Seja o primeiro!
+                            </td>
                         </tr>
                     <?php endif; ?>
-                    <?php foreach ($ultimos as $row): ?>
+                    <?php foreach ($amostra as $row): ?>
                         <tr>
-                            <td><?= date('d/m/Y', strtotime($row['data'])) ?></td>
                             <td class="fw-bold"><?= htmlspecialchars($row['station_code']) ?></td>
                             <td><?= htmlspecialchars($row['bairro']) ?></td>
-                            <td><?= number_format((float) $row['medida_mm'], 2, ',', '.') ?> mm</td>
+                            <td>
+                                <?php if ($row['medida_mm'] !== null): ?>
+                                    <strong><?= number_format((float) $row['medida_mm'], 2, ',', '.') ?> mm</strong>
+                                <?php else: ?>
+                                    <span class="text-muted small">Sem registro ainda</span>
+                                <?php endif; ?>
+                            </td>
+                            <td>
+                                <?php if (!empty($row['granizo'])): ?><span class="badge bg-info me-1">Granizo</span><?php endif; ?>
+                                <?php if (!empty($row['chuva_mansa'])): ?><span class="badge bg-secondary me-1">Mansa</span><?php endif; ?>
+                                <?php if (!empty($row['chuva_forte'])): ?><span class="badge bg-danger">Forte</span><?php endif; ?>
+                            </td>
+                            <td class="text-end">
+                                <a href="<?= url('/pluviometro-cidadao/estacao') ?>?codigo=<?= urlencode($row['station_code']) ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    Ver estação <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </td>
                         </tr>
                     <?php endforeach; ?>
                 </tbody>
