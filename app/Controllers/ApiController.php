@@ -153,10 +153,10 @@ class ApiController extends Controller
         // ou mistura errada de gênero tipo "as próximas 90 minutos"); caso contrário usa minutos.
         if ($minutos >= 60 && $minutos % 60 === 0) {
             $horas = (int) ($minutos / 60);
-            $textoTempo = $horas === 1 ? "1 hora" : "{$horas} horas";
+            $textoTempo = $horas === 1 ? "hora" : "{$horas} horas";
             $preposicao = $horas === 1 ? 'a próxima' : 'as próximas';
         } else {
-            $textoTempo = $minutos === 1 ? "1 minuto" : "{$minutos} minutos";
+            $textoTempo = $minutos === 1 ? "minuto" : "{$minutos} minutos";
             $preposicao = $minutos === 1 ? 'o próximo' : 'os próximos';
         }
 
