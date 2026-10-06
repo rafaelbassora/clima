@@ -178,18 +178,24 @@ class CidadaoModel
     }
 
     /**
-     * Gera token de redefinição de senha, exigindo que o CPF (pessoa física) ou
-     * CNPJ (empresa) informado bata com o cadastro — segunda verificação além do e-mail.
+     * Busca o cidadão pelo CPF (pessoa física) ou CNPJ (empresa).
      */
-    public function gerarTokenReset(string $email, string $documento): ?string
+    public function findByCpfOuCnpj(string $documento): ?array
     {
-        $cidadao = $this->findByEmail($email);
-        if (!$cidadao) {
-            return null;
-        }
+        $this->db->where('cpf', $documento);
+        $this->db->orWhere('cnpj', $documento);
+        $item = $this->db->getOne('cidadaos');
+        return $item ?: null;
+    }
 
-        $documentoCadastrado = $cidadao['tipo'] === 'pj' ? ($cidadao['cnpj'] ?? '') : ($cidadao['cpf'] ?? '');
-        if ($documentoCadastrado === '' || $documento !== $documentoCadastrado) {
+    /**
+     * Gera token de redefinição de senha a partir do CPF/CNPJ (sem precisar do e-mail,
+     * já que o link de redefinição é enviado pro e-mail já cadastrado).
+     */
+    public function gerarTokenReset(string $documento): ?array
+    {
+        $cidadao = $this->findByCpfOuCnpj($documento);
+        if (!$cidadao) {
             return null;
         }
 
@@ -200,7 +206,7 @@ class CidadaoModel
             'reset_expires' => date('Y-m-d H:i:s', strtotime('+1 hour')),
         ]);
 
-        return $token;
+        return ['token' => $token, 'email' => $cidadao['email'], 'nome' => $cidadao['nome']];
     }
 
     public function findByResetToken(string $token): ?array

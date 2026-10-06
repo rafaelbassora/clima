@@ -9,16 +9,12 @@
                     <div class="alert alert-success small"><?= htmlspecialchars($sucesso) ?></div>
                 <?php else: ?>
                     <p class="small text-muted text-center mb-4">
-                        Informe seu e-mail cadastrado e o CPF (ou CNPJ, se empresa) usado no cadastro.
+                        Informe o CPF (ou CNPJ, se empresa) usado no cadastro. Enviaremos o link pro e-mail já cadastrado.
                     </p>
                     <form action="<?= url('/pluviometro-cidadao/esqueci-senha') ?>" method="POST">
-                        <div class="mb-3">
-                            <label class="form-label small fw-bold">E-mail</label>
-                            <input type="email" name="email" class="form-control" required autofocus>
-                        </div>
                         <div class="mb-4">
                             <label class="form-label small fw-bold">CPF ou CNPJ</label>
-                            <input type="text" name="documento" class="form-control" required>
+                            <input type="text" name="documento" class="form-control" required autofocus>
                         </div>
                         <button type="submit" class="btn btn-primary w-100 rounded-pill fw-bold">Enviar Link</button>
                     </form>

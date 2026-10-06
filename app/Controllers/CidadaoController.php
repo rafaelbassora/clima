@@ -405,24 +405,23 @@ class CidadaoController extends Controller
 
     public function esqueciSenhaEnviar(): void
     {
-        $email = trim($_POST['email'] ?? '');
         $documento = preg_replace('/\D/', '', $_POST['documento'] ?? '');
 
-        if ($email !== '' && $documento !== '') {
-            $token = $this->model->gerarTokenReset($email, $documento);
-            if ($token) {
+        if ($documento !== '') {
+            $resultado = $this->model->gerarTokenReset($documento);
+            if ($resultado) {
                 $base = $this->urlBase();
-                $link = "{$base}/pluviometro-cidadao/redefinir-senha?token={$token}";
+                $link = "{$base}/pluviometro-cidadao/redefinir-senha?token={$resultado['token']}";
                 $corpo = "<p>Você solicitou a redefinição de senha do Pluviômetro Cidadão.</p>"
                     . "<p><a href=\"{$link}\">Clique aqui para criar uma nova senha</a></p>"
                     . "<p>Este link expira em 1 hora.</p>";
-                (new MailerService())->enviar($email, '', 'Redefinição de Senha - Pluviômetro Cidadão', $corpo);
+                (new MailerService())->enviar($resultado['email'], $resultado['nome'], 'Redefinição de Senha - Pluviômetro Cidadão', $corpo);
             }
         }
 
         $this->view('cidadao/esqueci-senha', [
             'pageTitle' => 'Recuperar Senha',
-            'sucesso' => 'Se o e-mail e o CPF/CNPJ informados baterem com um cadastro, você receberá um link de redefinição em instantes.',
+            'sucesso' => 'Se o CPF/CNPJ informado bater com um cadastro, enviamos um link de redefinição para o e-mail cadastrado.',
         ], 'main');
     }
 
