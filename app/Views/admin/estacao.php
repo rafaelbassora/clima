@@ -9,7 +9,7 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
     <h2 class="h4 fw-bold mb-1">Fonte de Dados da Estação</h2>
     <p class="text-muted small mb-0">
         O sistema suporta duas formas de captar os dados da estação meteorológica:
-        o DNS spoofing atual (intercepta o upload que a estação já faz pro serviço original)
+        o Local (DNS spoofing — intercepta o upload que a estação já faz pro serviço original)
         ou a API oficial do Weather Underground. Dá pra trocar aqui a qualquer momento,
         sem mexer em código.
     </p>
@@ -46,7 +46,7 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
                     <label class="form-label small fw-bold d-block">Fonte Ativa</label>
                     <div class="btn-group" role="group">
                         <input type="radio" class="btn-check" name="fonte_dados" id="fonteSpoofing" value="spoofing" <?= $estacaoConfig['fonte_dados'] === 'spoofing' ? 'checked' : '' ?>>
-                        <label class="btn btn-outline-primary" for="fonteSpoofing">DNS Spoofing (atual)</label>
+                        <label class="btn btn-outline-primary" for="fonteSpoofing">Local</label>
                         <input type="radio" class="btn-check" name="fonte_dados" id="fonteWunderground" value="wunderground" <?= $estacaoConfig['fonte_dados'] === 'wunderground' ? 'checked' : '' ?>>
                         <label class="btn btn-outline-primary" for="fonteWunderground">API Wunderground</label>
                     </div>
@@ -100,7 +100,7 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
     <div class="card-body p-4">
         <h3 class="h6 fw-bold mb-2">Status</h3>
         <p class="small mb-1">
-            Fonte ativa agora: <strong><?= $estacaoConfig['fonte_dados'] === 'wunderground' ? 'API Wunderground' : 'DNS Spoofing' ?></strong>
+            Fonte ativa agora: <strong><?= $estacaoConfig['fonte_dados'] === 'wunderground' ? 'API Wunderground' : 'Local' ?></strong>
         </p>
         <p class="small mb-1">
             Última sincronização via Wunderground:
