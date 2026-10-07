@@ -31,7 +31,9 @@ $parceiros = $config['parceiros'] ?? [];
     <title><?= htmlspecialchars($appTitulo) ?> - <?= htmlspecialchars($pageTitle ?? '') ?></title>
 
     <!-- SEO & Branding -->
+    <link rel="icon" href="<?= htmlspecialchars($favicon) ?>" type="image/png">
     <link rel="shortcut icon" href="<?= htmlspecialchars($favicon) ?>" type="image/png">
+    <link rel="apple-touch-icon" href="<?= htmlspecialchars($favicon) ?>">
     <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
     <meta property="og:title" content="<?= htmlspecialchars($appTitulo) ?>">
     <meta property="og:description" content="<?= htmlspecialchars($metaDescription) ?>">
