@@ -10,7 +10,7 @@ class WundergroundService
      * do sistema usa internamente (ex: temp em °C * 10, vento em km/h convertido pra
      * unidade interna, etc — ver mapeamento abaixo).
      *
-     * Retorna null em caso de erro (sem lançar exceção, pra não derrubar o cron).
+     * Lança RuntimeException em caso de erro (capturado pelo chamador).
      */
     public function buscarCondicaoAtual(string $apiKey, string $stationId): ?array
     {
@@ -40,25 +40,34 @@ class WundergroundService
 
         $m = $obs['metric'];
 
+        $tempRaw = $this->escalar($m['temp'] ?? null, 10);
+        $barRaw = $this->escalar($m['pressure'] ?? null, 10);
+        $humRaw = isset($obs['humidity']) ? (int) round($obs['humidity']) : null;
+        $solarradRaw = isset($obs['solarRadiation']) ? (int) round($obs['solarRadiation']) : null;
+        $windSpeedKmh = isset($m['windSpeed']) ? (float) $m['windSpeed'] : null;
+
         // Conversões pro formato interno (mesma escala usada em leituras_completas):
         // temp/dew/chill/heat em °C * 10 | hum em % inteiro | bar em hPa * 10 |
         // vento: km/h -> unidade interna (raw = km/h * 10 / 3.6, pois o resto do
         // sistema calcula km/h = raw/10*3.6) | rain/rainrate em mm * 10 | uvi * 10
         return [
-            'wid' => $stationId,
-            'temp' => $this->escalar($m['temp'] ?? null, 10),
+            // Mesma convenção que o receptor do spoofing usa quando a estação não
+            // manda um ID próprio: identifica a origem do dado direto na coluna 'wid'.
+            'wid' => 'Wunderground',
+            'temp' => $tempRaw,
             'dew' => $this->escalar($m['dewpt'] ?? null, 10),
             'chill' => $this->escalar($m['windChill'] ?? null, 10),
             'heat' => $this->escalar($m['heatIndex'] ?? null, 10),
-            'hum' => isset($obs['humidity']) ? (int) round($obs['humidity']) : null,
-            'bar' => $this->escalar($m['pressure'] ?? null, 10),
-            'wspd' => $this->converterVento($m['windSpeed'] ?? null),
+            'hum' => $humRaw,
+            'bar' => $barRaw,
+            'wspd' => $this->converterVento($windSpeedKmh),
             'wspdhi' => $this->converterVento($m['windGust'] ?? null),
             'wdir' => isset($obs['winddir']) ? (int) round($obs['winddir']) : null,
             'rain' => $this->escalar($m['precipTotal'] ?? null, 10),
             'rainrate' => $this->escalar($m['precipRate'] ?? null, 10),
-            'solarrad' => isset($obs['solarRadiation']) ? (int) round($obs['solarRadiation']) : null,
+            'solarrad' => $solarradRaw,
             'uvi' => $this->escalar($obs['uv'] ?? null, 10),
+            'et' => $this->calcularTaxaET($tempRaw ?? 0, $solarradRaw ?? 0, $humRaw ?? 50, $windSpeedKmh ?? 0, $barRaw ?? 1013),
         ];
     }
 
@@ -74,5 +83,55 @@ class WundergroundService
     private function converterVento(?float $kmh): ?int
     {
         return $kmh === null ? null : (int) round($kmh * 10 / 3.6);
+    }
+
+    /**
+     * Mesma fórmula de ET (FAO Penman-Monteith simplificada) usada pelo receptor do
+     * DNS spoofing (C:\Apache24\htdocs\receber\index.php), copiada aqui pra manter
+     * os dois caminhos equivalentes — senão a Evapotranspiração ficaria faltando
+     * quando a fonte fosse trocada pra Wunderground.
+     *
+     * Nota: aqui $windKmh já é km/h de verdade (vindo direto da API), por isso a
+     * conta de conversão pra m/s é só /3.6 (sem a casa decimal *10 que o
+     * receptor do spoofing precisa desfazer do dado bruto da estação).
+     */
+    private function calcularTaxaET(int $tempRaw, int $solarrad, int $hum, float $windKmh, int $barRaw): int
+    {
+        $T = $tempRaw / 10;
+        $RH = max(10, min(100, $hum));
+        $u2 = max(0, $windKmh / 3.6);
+        $Rs = $solarrad;
+
+        if ($Rs <= 0) {
+            return 0;
+        }
+
+        $bar = max(800, min(1100, $barRaw));
+        $P = $bar / 10;
+
+        $gamma = 0.000665 * $P;
+        $Rn = $Rs / 4000;
+
+        $es = 0.6108 * exp((17.27 * $T) / ($T + 237.3));
+        $ea = $es * ($RH / 100);
+        $delta = (4098 * $es) / (($T + 237.3) ** 2);
+
+        $ET0 = (
+            (0.408 * $delta * $Rn) +
+            ($gamma * (900 / ($T + 273)) * $u2 * ($es - $ea))
+        ) / (
+            $delta + $gamma * (1 + 0.34 * $u2)
+        );
+
+        $ET0 = $ET0 * 0.35; // Mesma calibração do receptor original
+
+        if ($ET0 < 0) {
+            $ET0 = 0;
+        }
+        if ($ET0 > 2.5) {
+            $ET0 = 2.5;
+        }
+
+        return (int) round($ET0 * 10);
     }
 }
