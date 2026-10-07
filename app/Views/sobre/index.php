@@ -1,5 +1,22 @@
 <!-- Sobre Nós Content -->
 <div class="row g-4">
+    <div class="col-12">
+        <div class="weather-card fade-in-up">
+            <div class="card-body px-4">
+                <p class="lead mb-3" style="font-size: 1.1rem; line-height: 1.7;">
+                    Este projeto nasceu em 2024 como um trabalho acadêmico da Univesp pra monitorar o clima de Pereira Barreto, e desde então vem sendo expandido a cada semestre por novas turmas de alunos. Hoje reúne estação meteorológica própria, sensores de IoT, previsão do tempo e um algoritmo de nowcasting, e segue evoluindo como Trabalho de Conclusão de Curso.
+                </p>
+                <h6 class="text-accent mb-2"><i class="bi bi-clock-history"></i> Cronologia:</h6>
+                <ul class="list-unstyled small text-muted mb-0">
+                    <li>2024 — Etapa 1: protótipo de coleta e arquivamento de dados pluviométricos</li>
+                    <li>2025 — Etapa 2: sensores IoT (temperatura/umidade) e modelos de previsão climática</li>
+                    <li>2026 — Etapa 3: monitoramento de umidade do solo com ESP32 e comunicação LoRa</li>
+                    <li>2026 — TCC: avaliação técnico-econômica da estação meteorológica IoT</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
     <div class="col-12 mb-4">
         <div class="weather-card fade-in-up">
             <div class="card-header-custom">
