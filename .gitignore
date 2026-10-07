@@ -5,6 +5,7 @@
 /public/phpmyadmin/
 config/config.php
 *.sql
+!database/schema.sql
 *.log
 .DS_Store
 Thumbs.db
