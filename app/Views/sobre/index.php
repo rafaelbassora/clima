@@ -4,7 +4,7 @@
         <div class="weather-card fade-in-up">
             <div class="card-body px-4">
                 <p class="lead mb-3" style="font-size: 1.1rem; line-height: 1.7;">
-                    Este projeto nasceu em 2024 como um trabalho acadêmico da Univesp pra monitorar o clima de Pereira Barreto, e desde então vem sendo expandido a cada semestre por novas turmas de alunos. Hoje reúne estação meteorológica própria, sensores de IoT, previsão do tempo e um algoritmo de nowcasting, e segue evoluindo como Trabalho de Conclusão de Curso.
+                    Este projeto nasceu em 2024 como um trabalho acadêmico da Univesp, em parceria com o município de Pereira Barreto, pra monitorar o clima da cidade, e desde então vem sendo expandido a cada semestre por novas turmas de alunos. Hoje reúne estação meteorológica própria, sensores de IoT, previsão do tempo e um algoritmo de nowcasting, e segue evoluindo como Trabalho de Conclusão de Curso.
                 </p>
                 <h6 class="text-accent mb-2"><i class="bi bi-clock-history"></i> Cronologia:</h6>
                 <ul class="list-unstyled small text-muted mb-0">
