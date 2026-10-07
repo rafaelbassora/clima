@@ -1,7 +1,7 @@
 <?php
-/** @var array $config */
+/** @var array $estacaoConfig */
 /** @var string|null $erro */
-$frequencia = (int) ($config['frequencia_minutos'] ?? 5);
+$frequencia = (int) ($estacaoConfig['frequencia_minutos'] ?? 5);
 $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
 ?>
 
@@ -45,20 +45,20 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
                 <div class="col-12">
                     <label class="form-label small fw-bold d-block">Fonte Ativa</label>
                     <div class="btn-group" role="group">
-                        <input type="radio" class="btn-check" name="fonte_dados" id="fonteSpoofing" value="spoofing" <?= $config['fonte_dados'] === 'spoofing' ? 'checked' : '' ?>>
+                        <input type="radio" class="btn-check" name="fonte_dados" id="fonteSpoofing" value="spoofing" <?= $estacaoConfig['fonte_dados'] === 'spoofing' ? 'checked' : '' ?>>
                         <label class="btn btn-outline-primary" for="fonteSpoofing">DNS Spoofing (atual)</label>
-                        <input type="radio" class="btn-check" name="fonte_dados" id="fonteWunderground" value="wunderground" <?= $config['fonte_dados'] === 'wunderground' ? 'checked' : '' ?>>
+                        <input type="radio" class="btn-check" name="fonte_dados" id="fonteWunderground" value="wunderground" <?= $estacaoConfig['fonte_dados'] === 'wunderground' ? 'checked' : '' ?>>
                         <label class="btn btn-outline-primary" for="fonteWunderground">API Wunderground</label>
                     </div>
                 </div>
 
                 <div class="col-md-6">
                     <label class="form-label small fw-bold">Wunderground API Key</label>
-                    <input type="text" name="wunderground_api_key" class="form-control" value="<?= htmlspecialchars($config['wunderground_api_key'] ?? '') ?>" placeholder="Gerada em wunderground.com/member/api-keys">
+                    <input type="text" name="wunderground_api_key" class="form-control" value="<?= htmlspecialchars($estacaoConfig['wunderground_api_key'] ?? '') ?>" placeholder="Gerada em wunderground.com/member/api-keys">
                 </div>
                 <div class="col-md-6">
                     <label class="form-label small fw-bold">Station ID</label>
-                    <input type="text" name="wunderground_station_id" class="form-control" value="<?= htmlspecialchars($config['wunderground_station_id'] ?? '') ?>" placeholder="Ex: IPEREI31">
+                    <input type="text" name="wunderground_station_id" class="form-control" value="<?= htmlspecialchars($estacaoConfig['wunderground_station_id'] ?? '') ?>" placeholder="Ex: IPEREI31">
                 </div>
 
                 <div class="col-md-4">
@@ -78,7 +78,7 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
                         <strong>Sobre os limites da API gratuita do Wunderground:</strong>
                         1500 chamadas por dia e 30 por minuto. A chave gratuita só é emitida
                         pra quem já tem uma estação própria ativa subindo dados pra eles
-                        (seu caso, estação <code><?= htmlspecialchars($config['wunderground_station_id'] ?? 'IPEREI31') ?></code>).
+                        (seu caso, estação <code><?= htmlspecialchars($estacaoConfig['wunderground_station_id'] ?? 'IPEREI31') ?></code>).
                         Com 1 chamada a cada <strong>1 minuto</strong> você já fica dentro do limite
                         (1440/dia), mas o ideal é <strong>2 em 2 minutos</strong> (720/dia) pra sobrar
                         margem em caso de falha/reenvio. Abaixo de 1 minuto não é recomendado.
@@ -100,14 +100,14 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
     <div class="card-body p-4">
         <h3 class="h6 fw-bold mb-2">Status</h3>
         <p class="small mb-1">
-            Fonte ativa agora: <strong><?= $config['fonte_dados'] === 'wunderground' ? 'API Wunderground' : 'DNS Spoofing' ?></strong>
+            Fonte ativa agora: <strong><?= $estacaoConfig['fonte_dados'] === 'wunderground' ? 'API Wunderground' : 'DNS Spoofing' ?></strong>
         </p>
         <p class="small mb-1">
             Última sincronização via Wunderground:
-            <strong><?= $config['ultima_sincronizacao'] ? date('d/m/Y H:i:s', strtotime($config['ultima_sincronizacao'])) : 'nunca' ?></strong>
+            <strong><?= $estacaoConfig['ultima_sincronizacao'] ? date('d/m/Y H:i:s', strtotime($estacaoConfig['ultima_sincronizacao'])) : 'nunca' ?></strong>
         </p>
-        <?php if (!empty($config['ultimo_erro'])): ?>
-            <p class="small text-danger mb-0">Último erro: <?= htmlspecialchars($config['ultimo_erro']) ?></p>
+        <?php if (!empty($estacaoConfig['ultimo_erro'])): ?>
+            <p class="small text-danger mb-0">Último erro: <?= htmlspecialchars($estacaoConfig['ultimo_erro']) ?></p>
         <?php endif; ?>
     </div>
 </div>

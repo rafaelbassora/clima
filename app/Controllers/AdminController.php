@@ -636,7 +636,7 @@ class AdminController extends Controller
             $this->view('admin/estacao', [
                 'title' => 'Fonte de Dados da Estação',
                 'activeMenu' => 'estacao',
-                'config' => $configModel->getConfig(),
+                'estacaoConfig' => $configModel->getConfig(),
                 'erro' => $erro,
             ], 'admin');
             return;
@@ -645,7 +645,7 @@ class AdminController extends Controller
         $this->view('admin/estacao', [
             'title' => 'Fonte de Dados da Estação',
             'activeMenu' => 'estacao',
-            'config' => $configModel->getConfig(),
+            'estacaoConfig' => $configModel->getConfig(),
         ], 'admin');
     }
 
