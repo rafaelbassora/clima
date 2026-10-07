@@ -239,5 +239,5 @@ mais sentido pro seu caso.
 
 ## Créditos
 
-Projeto integrador Univesp, em colaboração com o SAAE e a Prefeitura da
-Estância Turística de Pereira Barreto — 2024–2026.
+TCC e Projeto integrador Univesp, em colaboração com o SAAE e a Prefeitura
+da Estância Turística de Pereira Barreto — 2024–2026.
