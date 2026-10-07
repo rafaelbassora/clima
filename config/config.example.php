@@ -27,7 +27,8 @@ return [
 
     // Marca/visual — logos, cores e créditos institucionais
     'branding' => [
-        'logo_prefeitura' => '/img/logo.png', // Caminho relativo dentro de /public
+        'favicon'         => '/img/logo.png', // Ícone usado no favicon e no preview de compartilhamento (og:image)
+        'logo_prefeitura' => '/img/logo.png', // Logo da prefeitura exibido no rodapé/parceiros
         'cor_primaria'    => '#0d6efd',
         'cor_destaque'    => '#ff6b35',
         'footer_creditos' => 'CHANGE_ME', // Texto livre de créditos (HTML permitido)

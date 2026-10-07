@@ -8,6 +8,7 @@ $appNomeCurto = $config['app']['nome_curto'] ?? 'Clima';
 $appDominio = $config['app']['dominio'] ?? ($_SERVER['HTTP_HOST'] ?? '');
 $metaDescription = $config['seo']['meta_description'] ?? '';
 $logoPrefeitura = $config['branding']['logo_prefeitura'] ?? '/img/logo.png';
+$favicon = $config['branding']['favicon'] ?? '/img/logo.png';
 $footerCreditos = $config['branding']['footer_creditos'] ?? '';
 $footerAviso = $config['branding']['footer_aviso'] ?? '';
 $parceiros = $config['parceiros'] ?? [];
@@ -30,11 +31,11 @@ $parceiros = $config['parceiros'] ?? [];
     <title><?= htmlspecialchars($appTitulo) ?> - <?= htmlspecialchars($pageTitle ?? '') ?></title>
 
     <!-- SEO & Branding -->
-    <link rel="shortcut icon" href="<?= htmlspecialchars($logoPrefeitura) ?>" type="image/png">
+    <link rel="shortcut icon" href="<?= htmlspecialchars($favicon) ?>" type="image/png">
     <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
     <meta property="og:title" content="<?= htmlspecialchars($appTitulo) ?>">
     <meta property="og:description" content="<?= htmlspecialchars($metaDescription) ?>">
-    <meta property="og:image" content="https://<?= htmlspecialchars($appDominio) ?><?= htmlspecialchars($logoPrefeitura) ?>">
+    <meta property="og:image" content="https://<?= htmlspecialchars($appDominio) ?><?= htmlspecialchars($favicon) ?>">
     <meta property="og:url" content="https://<?= htmlspecialchars($appDominio) ?>/">
     <meta property="og:type" content="website">
 

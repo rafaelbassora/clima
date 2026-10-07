@@ -207,7 +207,8 @@ Tudo em `config.php` → `branding`:
 
 ```php
 'branding' => [
-    'logo_prefeitura' => '/img/logo.png',
+    'favicon'         => '/img/logo.png', // ícone / preview de compartilhamento
+    'logo_prefeitura' => '/img/logo.png', // logo exibido no rodapé
     'cor_primaria'    => '#0d6efd',
     'cor_destaque'    => '#ff6b35',
     'footer_creditos' => 'Texto livre do rodapé...',
