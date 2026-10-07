@@ -251,8 +251,14 @@ class ApiController extends Controller
     {
         $this->verifyCronToken();
         $local = $this->getParam('local', '1');
+
+        // Aproveita esse cron de 1 em 1 min pra também manter a sincronização com o
+        // Wunderground em dia (self-throttled pela frequência configurada no admin) —
+        // assim trocar a fonte de dados funciona na hora, sem precisar de outro cron.
+        $this->executarSyncWunderground($local);
+
         $model = new LeituraModel();
-        
+
         $atual = $model->getUltimaLeitura($local);
         
         if (!$atual) {
@@ -304,24 +310,34 @@ class ApiController extends Controller
     {
         $this->verifyCronToken();
         $local = $this->getParam('local', '1');
+        $resultado = $this->executarSyncWunderground($local);
+        $codigo = $resultado['success'] ? 200 : ($resultado['codigo'] ?? 500);
+        unset($resultado['codigo']);
+        $this->json($resultado, $codigo);
+    }
 
+    /**
+     * Lógica de sincronização com o Wunderground, reaproveitada tanto pelo endpoint
+     * dedicado (/api/sync-wunderground) quanto automaticamente de dentro do
+     * circuit-breaker (que já roda a cada 1 min via cron) — assim trocar a fonte
+     * pelo admin funciona na hora, sem precisar cadastrar mais uma linha de cron.
+     */
+    private function executarSyncWunderground(string $local = '1'): array
+    {
         $configModel = new \App\Models\EstacaoConfigModel();
         $config = $configModel->getConfig();
 
         if ($config['fonte_dados'] !== 'wunderground') {
-            $this->json(['success' => true, 'acao' => 'nenhuma (fonte atual: spoofing)']);
-            return;
+            return ['success' => true, 'acao' => 'nenhuma (fonte atual: local)'];
         }
 
         if (empty($config['wunderground_api_key']) || empty($config['wunderground_station_id'])) {
-            $this->json(['success' => false, 'message' => 'API Key ou Station ID não configurados.'], 400);
-            return;
+            return ['success' => false, 'message' => 'API Key ou Station ID não configurados.', 'codigo' => 400];
         }
 
         $freqMinutos = max(1, (int) $config['frequencia_minutos']);
         if ($config['ultima_sincronizacao'] && strtotime($config['ultima_sincronizacao']) > strtotime("-{$freqMinutos} minutes")) {
-            $this->json(['success' => true, 'acao' => 'ainda nao e hora (respeitando frequencia configurada)']);
-            return;
+            return ['success' => true, 'acao' => 'ainda nao e hora (respeitando frequencia configurada)'];
         }
 
         try {
@@ -337,10 +353,10 @@ class ApiController extends Controller
 
             $configModel->registrarSincronizacao($sucesso, $sucesso ? null : $db->getLastError());
 
-            $this->json(['success' => $sucesso, 'acao' => 'sincronizado', 'dados' => $dados]);
+            return ['success' => $sucesso, 'acao' => 'sincronizado', 'dados' => $dados];
         } catch (\Throwable $e) {
             $configModel->registrarSincronizacao(false, $e->getMessage());
-            $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+            return ['success' => false, 'message' => $e->getMessage(), 'codigo' => 500];
         }
     }
 
