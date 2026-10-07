@@ -11,7 +11,7 @@
             <i class="bi bi-people-fill text-primary"></i> Pluviômetro Cidadão
         </h4>
         <p class="text-muted small mb-0">
-            Moradores e empresas de Pereira Barreto cadastram seu próprio pluviômetro e ajudam a
+            Moradores e empresas de <?= htmlspecialchars($config['cidade']['nome'] ?? 'Pereira Barreto') ?> cadastram seu próprio pluviômetro e ajudam a
             mapear a chuva em todos os bairros da cidade. O endereço nunca é divulgado — cada
             estação aparece apenas com um código e o bairro.
         </p>

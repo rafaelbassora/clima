@@ -1,24 +1,29 @@
+<?php
+$cidadeNome = $config['cidade']['nome'] ?? 'Pereira Barreto';
+$appNomeSistema = $config['app']['nome_sistema'] ?? 'Clima';
+$appDominioTermos = $config['app']['dominio'] ?? '';
+?>
 <div class="row mb-5">
     <div class="col-lg-10 mx-auto">
         <div class="weather-card p-4 p-md-5 fade-in-up">
             <h2 class="display-6 fw-bold text-primary mb-4 text-center">Termos de Uso</h2>
-            <p class="text-muted text-center mb-5">Portal Clima Pereira Barreto</p>
+            <p class="text-muted text-center mb-5">Portal <?= htmlspecialchars($appNomeSistema) ?></p>
 
             <div class="terms-content text-secondary" style="line-height: 1.8;">
 
                 <section class="mb-5">
                     <h4 class="text-dark fw-bold mb-3">1. Aceitação e Objetivo</h4>
-                    <p>Ao acessar o portal de monitoramento climático de Pereira Barreto, você concorda com estes Termos
+                    <p>Ao acessar o portal de monitoramento climático de <?= htmlspecialchars($cidadeNome) ?>, você concorda com estes Termos
                         de Uso. Este sistema tem como objetivo democratizar o acesso a informações meteorológicas locais
                         em tempo real.</p>
                 </section>
 
                 <section class="mb-5">
                     <h4 class="text-dark fw-bold mb-3">2. Natureza dos Dados e Isenção de Responsabilidade</h4>
-                    <p>Este portal é um serviço de utilidade pública mantido pela Prefeitura de Pereira Barreto. Os
+                    <p>Este portal é um serviço de utilidade pública mantido pela Prefeitura de <?= htmlspecialchars($cidadeNome) ?>. Os
                         dados meteorológicos locais apresentados possuem caráter estritamente informativo, são gerados
                         por estações automatizadas e estão sujeitos a variações técnicas. A Prefeitura do Município de
-                        Pereira Barreto não se responsabiliza por decisões (pessoais, agrícolas ou comerciais) tomadas
+                        <?= htmlspecialchars($cidadeNome) ?> não se responsabiliza por decisões (pessoais, agrícolas ou comerciais) tomadas
                         com base nestas leituras. Para alertas e emergências, consulte sempre os canais oficiais da
                         Defesa Civil e os boletins do CPTEC/INPE ou INMET.</p>
                 </section>
@@ -38,7 +43,7 @@
                         prejudiquem a velocidade de acesso dos demais munícipes, caso for realizar (scraping) utilize
                         ratings moderados, como por exemplo 5 a 10 consultas por minuto. É obrigatório informar a
                         fonte dos dados, ou seja, o portal <a
-                            href="https://clima.pereirabarreto.sp.gov.br/">clima.pereirabarreto.sp.gov.br</a>.</p>
+                            href="https://<?= htmlspecialchars($appDominioTermos) ?>/"><?= htmlspecialchars($appDominioTermos) ?></a>.</p>
                 </section>
 
                 <section class="mb-5">

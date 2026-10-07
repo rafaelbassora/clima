@@ -1,11 +1,49 @@
 <?php
 
 return [
-    // Aplicação
-    'app_name'  => 'Clima Pereira Barreto',
-    'app_title' => 'Clima Pereira Barreto - SMCPB',
+    // Aplicação (retrocompatibilidade — preferir 'app' abaixo)
+    'app_name'  => 'CHANGE_ME',
+    'app_title' => 'CHANGE_ME',
     'timezone'  => 'America/Sao_Paulo',
     'base_url'  => '/',
+
+    // Identidade da cidade — isso é o que muda pra cada prefeitura.
+    // O 'ibge' é o código de 7 dígitos do IBGE (necessário pra previsão via INMET).
+    // Consulte em: https://www.ibge.gov.br/explica/codigos-dos-municipios.php
+    'cidade' => [
+        'nome' => 'CHANGE_ME', // Ex: "Pereira Barreto"
+        'uf'   => 'CHANGE_ME', // Ex: "SP"
+        'ibge' => 'CHANGE_ME', // Ex: "3537404"
+    ],
+
+    // Identidade do sistema/app
+    'app' => [
+        'nome_sistema' => 'CHANGE_ME', // Nome completo, ex: "Clima Pereira Barreto"
+        'nome_curto'   => 'CHANGE_ME', // Nome curto pro menu/header, ex: "Clima PBTO"
+        'sigla'        => 'CHANGE_ME', // Ex: "SMCPB"
+        'titulo'       => 'CHANGE_ME', // Título das páginas (<title>)
+        'dominio'      => 'CHANGE_ME', // Ex: "clima.suacidade.sp.gov.br" (sem https://)
+    ],
+
+    // Marca/visual — logos, cores e créditos institucionais
+    'branding' => [
+        'logo_prefeitura' => '/img/logo.png', // Caminho relativo dentro de /public
+        'cor_primaria'    => '#0d6efd',
+        'cor_destaque'    => '#ff6b35',
+        'footer_creditos' => 'CHANGE_ME', // Texto livre de créditos (HTML permitido)
+        'footer_aviso'    => 'CHANGE_ME', // Aviso legal/institucional no rodapé
+    ],
+
+    // Parceiros institucionais exibidos no rodapé (logo relativo a /public).
+    // Pode deixar como array vazio [] se não houver parceiros.
+    'parceiros' => [
+        // ['nome' => 'Nome do Parceiro', 'logo' => '/img/logo-parceiro.png'],
+    ],
+
+    // SEO
+    'seo' => [
+        'meta_description' => 'CHANGE_ME',
+    ],
 
     // Banco de dados
     'db' => [
@@ -50,7 +88,7 @@ return [
         'smtp_secure' => 'tls',
         'port' => 587,
         'from_email' => 'CHANGE_ME',
-        'from_name' => 'Clima Pereira Barreto',
+        'from_name' => 'CHANGE_ME',
     ],
 
     // Ambiente

@@ -4,12 +4,21 @@ namespace App\Services;
 
 class CepService
 {
-    private const CIDADE_PERMITIDA = 'PEREIRA BARRETO';
-    private const UF_PERMITIDA = 'SP';
+    private string $cidadePermitida;
+    private string $cidadeNomeExibicao;
+    private string $ufPermitida;
+
+    public function __construct()
+    {
+        $config = $GLOBALS['config']['cidade'] ?? [];
+        $this->cidadeNomeExibicao = $config['nome'] ?? 'Pereira Barreto';
+        $this->cidadePermitida = $this->normalizar($this->cidadeNomeExibicao);
+        $this->ufPermitida = strtoupper($config['uf'] ?? 'SP');
+    }
 
     /**
      * Consulta o CEP na API pública ViaCEP e retorna os dados,
-     * validando se pertence a Pereira Barreto - SP.
+     * validando se pertence à cidade configurada (ver config['cidade']).
      */
     public function consultar(string $cep): array
     {
@@ -40,8 +49,8 @@ class CepService
         $cidade = $this->normalizar($data['localidade'] ?? '');
         $uf = strtoupper($data['uf'] ?? '');
 
-        if ($cidade !== self::CIDADE_PERMITIDA || $uf !== self::UF_PERMITIDA) {
-            return ['valido' => false, 'erro' => 'Este programa é exclusivo para moradores de Pereira Barreto - SP.'];
+        if ($cidade !== $this->cidadePermitida || $uf !== $this->ufPermitida) {
+            return ['valido' => false, 'erro' => "Este programa é exclusivo para moradores de {$this->cidadeNomeExibicao} - {$this->ufPermitida}."];
         }
 
         return [

@@ -3,7 +3,7 @@
         <h4 class="mb-0">
             <i class="bi bi-newspaper text-primary"></i> Notícias e Comunicados
         </h4>
-        <small class="text-muted">Acompanhe as últimas atualizações de Clima Pereira Barreto</small>
+        <small class="text-muted">Acompanhe as últimas atualizações de <?= htmlspecialchars($config['app']['nome_sistema'] ?? 'Clima') ?></small>
     </div>
 </div>
 

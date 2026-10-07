@@ -21,8 +21,8 @@ $menuItems = [
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title><?= htmlspecialchars($title ?? 'Admin') ?> — Clima PB</title>
-    <link rel="shortcut icon" href="/img/logo.png" type="image/png">
+    <title><?= htmlspecialchars($title ?? 'Admin') ?> — <?= htmlspecialchars($config['app']['nome_curto'] ?? 'Clima') ?></title>
+    <link rel="shortcut icon" href="<?= htmlspecialchars($config['branding']['logo_prefeitura'] ?? '/img/logo.png') ?>" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -210,7 +210,7 @@ $menuItems = [
         </main>
 
         <footer class="adm-footer">
-            &copy; <?= date('Y') ?> Clima Pereira Barreto — Painel Administrativo
+            &copy; <?= date('Y') ?> <?= htmlspecialchars($config['app']['nome_sistema'] ?? 'Clima') ?> — Painel Administrativo
         </footer>
     </div>
 

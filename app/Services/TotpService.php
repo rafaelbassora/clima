@@ -20,7 +20,7 @@ class TotpService
     /**
      * Monta a URI otpauth:// usada para gerar o QR Code (lido pelo app autenticador).
      */
-    public function getOtpAuthUri(string $secret, string $label, string $issuer = 'Clima Pereira Barreto'): string
+    public function getOtpAuthUri(string $secret, string $label, string $issuer = 'Clima'): string
     {
         $label = rawurlencode($issuer . ':' . $label);
         $issuerEnc = rawurlencode($issuer);

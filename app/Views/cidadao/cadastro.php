@@ -8,7 +8,7 @@
     </a>
     <h2 class="h4 fw-bold mt-2">Cadastrar meu Pluviômetro</h2>
     <p class="text-muted small mb-0">
-        Exclusivo para moradores e empresas de Pereira Barreto - SP. Depois de enviar, seu cadastro
+        Exclusivo para moradores e empresas de <?= htmlspecialchars($config['cidade']['nome'] ?? 'Pereira Barreto') ?> - <?= htmlspecialchars($config['cidade']['uf'] ?? 'SP') ?>. Depois de enviar, seu cadastro
         passa por uma análise da prefeitura antes de ser liberado.
     </p>
 </div>
@@ -157,7 +157,7 @@ document.getElementById('cepInput').addEventListener('input', function () {
 document.getElementById('formCadastro').addEventListener('submit', function (e) {
     if (!cepValido) {
         e.preventDefault();
-        alert('Informe um CEP válido de Pereira Barreto - SP antes de enviar.');
+        alert('Informe um CEP válido de <?= htmlspecialchars(addslashes($config['cidade']['nome'] ?? 'Pereira Barreto')) ?> - <?= htmlspecialchars($config['cidade']['uf'] ?? 'SP') ?> antes de enviar.');
     }
 });
 </script>

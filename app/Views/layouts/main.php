@@ -2,6 +2,15 @@
 // Detecta base path para assets
 $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
 $assetsBase = rtrim(dirname($scriptName), '/\\');
+
+$appTitulo = $config['app']['titulo'] ?? $config['app_title'] ?? 'Clima';
+$appNomeCurto = $config['app']['nome_curto'] ?? 'Clima';
+$appDominio = $config['app']['dominio'] ?? ($_SERVER['HTTP_HOST'] ?? '');
+$metaDescription = $config['seo']['meta_description'] ?? '';
+$logoPrefeitura = $config['branding']['logo_prefeitura'] ?? '/img/logo.png';
+$footerCreditos = $config['branding']['footer_creditos'] ?? '';
+$footerAviso = $config['branding']['footer_aviso'] ?? '';
+$parceiros = $config['parceiros'] ?? [];
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">
@@ -18,25 +27,24 @@ $assetsBase = rtrim(dirname($scriptName), '/\\');
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title><?= $config['app_title'] ?> - <?= $pageTitle ?? '' ?></title>
+    <title><?= htmlspecialchars($appTitulo) ?> - <?= htmlspecialchars($pageTitle ?? '') ?></title>
 
     <!-- SEO & Branding -->
-    <link rel="shortcut icon" href="/img/logo.png" type="image/png">
-    <meta name="description" content="Acompanhe o tempo em tempo real em Pereira Barreto. Dados históricos e estatísticas detalhadas.">
-    <meta property="og:title" content="<?= $config['app_title'] ?>">
-    <meta property="og:description" content="Acompanhe o tempo em tempo real em Pereira Barreto. Dados históricos e estatísticas detalhadas.">
-    <meta property="og:image" content="https://clima.pereirabarreto.sp.gov.br/img/logo.png">
-    <meta property="og:url" content="https://clima.pereirabarreto.sp.gov.br/">
+    <link rel="shortcut icon" href="<?= htmlspecialchars($logoPrefeitura) ?>" type="image/png">
+    <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
+    <meta property="og:title" content="<?= htmlspecialchars($appTitulo) ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($metaDescription) ?>">
+    <meta property="og:image" content="https://<?= htmlspecialchars($appDominio) ?><?= htmlspecialchars($logoPrefeitura) ?>">
+    <meta property="og:url" content="https://<?= htmlspecialchars($appDominio) ?>/">
     <meta property="og:type" content="website">
 
-    <meta name="description" content="Sistema de Monitoramento Climático de Pereira Barreto - Temperatura, umidade e chuva em tempo real.">
     <meta name="theme-color" content="#0f1923">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($config['app_title']) ?>">
+    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appTitulo) ?>">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
-    <title><?= htmlspecialchars($pageTitle ?? 'Início') ?> — <?= htmlspecialchars($config['app_title']) ?></title>
+    <title><?= htmlspecialchars($pageTitle ?? 'Início') ?> — <?= htmlspecialchars($appTitulo) ?></title>
 
     <!-- Bootstrap 5.3.3 -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
@@ -96,7 +104,7 @@ $assetsBase = rtrim(dirname($scriptName), '/\\');
     <aside class="sidebar d-none d-lg-block">
         <a href="<?= url('/inicio') ?>?local=1" class="sidebar-brand">
             <i class="bi bi-cloud-sun-fill"></i>
-            Clima PBTO
+            <?= htmlspecialchars($appNomeCurto) ?>
         </a>
         <ul class="sidebar-nav">
             <?php
@@ -137,7 +145,7 @@ $assetsBase = rtrim(dirname($scriptName), '/\\');
     <nav class="mobile-navbar d-lg-none">
         <a href="<?= url('/inicio') ?>?local=1" class="navbar-brand">
             <i class="bi bi-cloud-sun-fill"></i>
-            Clima PBTO
+            <?= htmlspecialchars($appNomeCurto) ?>
         </a>
         <button class="btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-label="Menu">
             <i class="bi bi-list"></i>
@@ -180,21 +188,24 @@ $assetsBase = rtrim(dirname($scriptName), '/\\');
     <!-- ============ FOOTER ============ -->
     <footer class="footer">
         <div class="container">
+            <?php if (!empty($parceiros)): ?>
             <div class="footer-logos">
-                <img src="https://clima.pereirabarreto.sp.gov.br/img/logo-prefeitura-de-pereira-barreto-sites-periodo-eleitoral-2024.png"
-                     alt="Logo Prefeitura de Pereira Barreto" loading="lazy">
-                <img src="https://clima.pereirabarreto.sp.gov.br/img/logo-univesp.png"
-                     alt="Logo Univesp" loading="lazy">
-                <img src="https://clima.pereirabarreto.sp.gov.br/img/logo-saae-2-pequeno2.png"
-                     alt="Logo SAAE" loading="lazy">
+                <?php foreach ($parceiros as $parceiro): ?>
+                    <img src="<?= htmlspecialchars($parceiro['logo']) ?>"
+                         alt="Logo <?= htmlspecialchars($parceiro['nome']) ?>" loading="lazy">
+                <?php endforeach; ?>
             </div>
+            <?php endif; ?>
+            <?php if (!empty($footerCreditos)): ?>
             <p class="footer-text mb-2">
-                Projeto integrador Univesp — Colaboração SAAE Pereira Barreto e
-                Prefeitura da Estância Turística de Pereira Barreto — 2024–2026.
+                <?= htmlspecialchars($footerCreditos) ?>
             </p>
+            <?php endif; ?>
+            <?php if (!empty($footerAviso)): ?>
             <div class="footer-disclaimer mx-auto" style="max-width: 900px; font-size: 0.75rem; color: rgba(255,255,255,0.4); line-height: 1.5;">
-                Este portal é um serviço de utilidade pública mantido pela Prefeitura de Pereira Barreto. Ao utilizar este sistema, você concorda com os nossos <a href="<?= url('/termos') ?>" class="text-white text-decoration-underline opacity-75">Termos de Uso</a>. Os dados meteorológicos possuem caráter informativo e estão sujeitos a variações técnicas. Consulte sempre os canais oficiais da Defesa Civil.
+                <?= htmlspecialchars($footerAviso) ?> Ao utilizar este sistema, você concorda com os nossos <a href="<?= url('/termos') ?>" class="text-white text-decoration-underline opacity-75">Termos de Uso</a>. Os dados meteorológicos possuem caráter informativo e estão sujeitos a variações técnicas. Consulte sempre os canais oficiais da Defesa Civil.
             </div>
+            <?php endif; ?>
         </div>
     </footer>
 

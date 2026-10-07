@@ -519,7 +519,7 @@ class AdminController extends Controller
             $_SESSION['2fa_setup_secret'] = (new TotpService())->generateSecret();
         }
         $secret = $_SESSION['2fa_setup_secret'];
-        $otpUri = (new TotpService())->getOtpAuthUri($secret, $user['email']);
+        $otpUri = (new TotpService())->getOtpAuthUri($secret, $user['email'], $this->config['app']['nome_sistema'] ?? 'Clima');
 
         $this->view('admin/2fa', [
             'title' => 'Autenticação em Duas Etapas',
@@ -544,7 +544,7 @@ class AdminController extends Controller
         }
 
         $user = $this->userModel->getById($userId);
-        $otpUri = (new TotpService())->getOtpAuthUri($secret, $user['email']);
+        $otpUri = (new TotpService())->getOtpAuthUri($secret, $user['email'], $this->config['app']['nome_sistema'] ?? 'Clima');
         $this->view('admin/2fa', [
             'title' => 'Autenticação em Duas Etapas',
             'ativado' => false,
@@ -585,7 +585,7 @@ class AdminController extends Controller
                 . "<p>Seu cadastro no <strong>Pluviômetro Cidadão</strong> foi aprovado.</p>"
                 . "<p>Sua estação recebeu o código: <strong>{$code}</strong></p>"
                 . "<p>Já pode acessar seu painel e começar a lançar os dados de chuva:</p>"
-                . "<p><a href=\"https://clima.pereirabarreto.sp.gov.br/pluviometro-cidadao/login\">Acessar meu painel</a></p>";
+                . "<p><a href=\"https://{$this->config['app']['dominio']}/pluviometro-cidadao/login\">Acessar meu painel</a></p>";
             (new MailerService())->enviar($cidadao['email'], $cidadao['nome'], 'Cadastro Aprovado - Pluviômetro Cidadão', $corpo);
         }
 

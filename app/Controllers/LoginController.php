@@ -143,11 +143,12 @@ class LoginController extends Controller
         if ($email !== '') {
             $token = (new UserModel())->gerarTokenReset($email);
             if ($token) {
+                $nomeSistema = $this->config['app']['nome_sistema'] ?? 'Clima';
                 $link = $this->urlBase() . "/login/redefinir-senha?token={$token}";
-                $corpo = "<p>Você solicitou a redefinição de senha do painel administrativo do Clima Pereira Barreto.</p>"
+                $corpo = "<p>Você solicitou a redefinição de senha do painel administrativo do {$nomeSistema}.</p>"
                     . "<p><a href=\"{$link}\">Clique aqui para criar uma nova senha</a></p>"
                     . "<p>Este link expira em 1 hora. Se você não solicitou isso, ignore este e-mail.</p>";
-                (new MailerService())->enviar($email, '', 'Redefinição de Senha - Clima Pereira Barreto', $corpo);
+                (new MailerService())->enviar($email, '', "Redefinição de Senha - {$nomeSistema}", $corpo);
             }
         }
 

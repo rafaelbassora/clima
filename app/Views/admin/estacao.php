@@ -78,7 +78,7 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
                         <strong>Sobre os limites da API gratuita do Wunderground:</strong>
                         1500 chamadas por dia e 30 por minuto. A chave gratuita só é emitida
                         pra quem já tem uma estação própria ativa subindo dados pra eles
-                        (seu caso, estação <code><?= htmlspecialchars($estacaoConfig['wunderground_station_id'] ?? 'IPEREI31') ?></code>).
+                        (seu caso, estação <code><?= htmlspecialchars($estacaoConfig['wunderground_station_id'] ?? 'SUA_ESTACAO') ?></code>).
                         Com 1 chamada a cada <strong>1 minuto</strong> você já fica dentro do limite
                         (1440/dia), mas o ideal é <strong>2 em 2 minutos</strong> (720/dia) pra sobrar
                         margem em caso de falha/reenvio. Abaixo de 1 minuto não é recomendado.
