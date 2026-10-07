@@ -7,6 +7,7 @@ $menuItems = [
     ['url' => '/admin/dashboard',       'icon' => 'bi-speedometer2',          'label' => 'Dashboard',  'id' => 'dashboard'],
     ['url' => '/admin',                 'icon' => 'bi-cloud-rain-heavy-fill', 'label' => 'Chuvas Manuais', 'id' => 'chuvas'],
     ['url' => '/admin/chuva-automatica','icon' => 'bi-tools',                 'label' => 'Corrigir Automática', 'id' => 'chuva-automatica'],
+    ['url' => '/admin/estacao',         'icon' => 'bi-broadcast',             'label' => 'Fonte da Estação', 'id' => 'estacao'],
     ['url' => '/admin/cidadaos',        'icon' => 'bi-people-fill',           'label' => 'Pluviômetro Cidadão', 'id' => 'cidadaos'],
     ['url' => '/admin/alertas',         'icon' => 'bi-exclamation-triangle-fill', 'label' => 'Alertas', 'id' => 'alertas'],
     ['url' => '/admin/noticias',        'icon' => 'bi-newspaper',             'label' => 'Notícias',   'id' => 'noticias'],

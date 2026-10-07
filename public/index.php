@@ -154,6 +154,11 @@ $router->get('/admin/chuva-automatica',         'AdminController', 'chuvaAutomat
 $router->post('/admin/chuva-automatica/salvar', 'AdminController', 'chuvaAutomaticaSalvar');
 $router->get('/admin/chuva-automatica/delete',  'AdminController', 'chuvaAutomaticaDelete');
 
+// Fonte de Dados da Estação (admin)
+$router->get('/admin/estacao',          'AdminController', 'estacaoConfig');
+$router->post('/admin/estacao',         'AdminController', 'estacaoConfig');
+$router->get('/admin/estacao/testar',   'AdminController', 'estacaoTestar');
+
 // 2FA Admin (autosserviço)
 $router->get('/admin/2fa',          'AdminController', 'twofa');
 $router->post('/admin/2fa/enable',  'AdminController', 'twofaEnable');
@@ -173,6 +178,7 @@ $router->get('/api/validate-nowcasting', 'ApiController',      'validateNowcasti
 $router->get('/api/recalibrar-nowcasting', 'ApiController',    'recalibrarNowcasting');
 $router->get('/api/circuit-breaker',   'ApiController',      'circuitBreaker');
 $router->get('/api/preload-cache',     'ApiController',      'preloadCache');
+$router->get('/api/sync-wunderground', 'ApiController',      'syncWunderground');
 $router->post('/api/umidade-solo',     'ApiController',      'postUmidadeSolo');
 
 // Despacha

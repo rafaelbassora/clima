@@ -35,6 +35,12 @@ class NowcastService
      *
      * "Alta probabilidade" agora exige o sinal principal (orvalho) CONFIRMADO por pelo
      * menos mais um sinal, não dispara mais sozinho.
+     *
+     * Ajuste em 07/10/2026: o sinal de orvalho é MUITO mais fraco à noite. Análise
+     * separada por período mostrou que <=1.0°C dá 36,1% de chance de chuva de dia,
+     * mas só 13,1% à noite — porque em noites de céu limpo a temperatura cai perto
+     * do orvalho por resfriamento radiativo normal, sem relação com chuva chegando.
+     * Por isso o peso do orvalho à noite é bem menor (metade, arredondado pra baixo).
      */
     public function calcularTendencia(array $atual, array $anterior, int $minutos = 60, bool $chuvaRecente = false): array
     {
@@ -84,14 +90,17 @@ class NowcastService
         $score = 0;
 
         // 🌡️ Saturação do ar (sinal principal, mas com peso realista)
+        // À noite (resfriamento radiativo) esse sinal é bem menos confiável — peso reduzido.
         $diferencaOrvalho = $tempAtual - $orvalhoAtual;
+        $hora = (int) date('H');
+        $ehNoite = ($hora < 7 || $hora >= 19);
 
         if ($diferencaOrvalho <= 1.0)
-            $score += 3;
+            $score += $ehNoite ? 1 : 3;
         elseif ($diferencaOrvalho <= 3.0)
-            $score += 2;
+            $score += $ehNoite ? 1 : 2;
         elseif ($diferencaOrvalho <= 4.0)
-            $score += 1;
+            $score += $ehNoite ? 0 : 1;
 
         // 📉 Tendência de pressão (sinal secundário, peso bem reduzido)
         $taxaQuedaPressao = ($pressaoAnt - $pressaoAtual) / $horasDelta;
@@ -107,7 +116,7 @@ class NowcastService
 
         // =========================
         // 3. DECISÃO FINAL
-        // Máximo possível: 3 (orvalho) + 1 (pressão) + 1 (vento) = 5
+        // Máximo possível: 5 de dia (3 orvalho + 1 pressão + 1 vento), 3 à noite.
         // Limiares vêm da nowcasting_config (se autoajustam com o tempo).
         // =========================
 

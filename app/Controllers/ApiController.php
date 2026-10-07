@@ -294,6 +294,57 @@ class ApiController extends Controller
 
     /**
      * GET /api/preload-cache
+     * GET /api/sync-wunderground
+     * Busca a condição atual na API do Wunderground e grava em leituras_completas,
+     * como fonte alternativa ao DNS spoofing. Só faz algo se fonte_dados estiver
+     * configurada como 'wunderground' no admin, e respeita a frequência configurada
+     * (se for chamado mais rápido que isso, não faz nada — barato de chamar sempre).
+     */
+    public function syncWunderground(): void
+    {
+        $this->verifyCronToken();
+        $local = $this->getParam('local', '1');
+
+        $configModel = new \App\Models\EstacaoConfigModel();
+        $config = $configModel->getConfig();
+
+        if ($config['fonte_dados'] !== 'wunderground') {
+            $this->json(['success' => true, 'acao' => 'nenhuma (fonte atual: spoofing)']);
+            return;
+        }
+
+        if (empty($config['wunderground_api_key']) || empty($config['wunderground_station_id'])) {
+            $this->json(['success' => false, 'message' => 'API Key ou Station ID não configurados.'], 400);
+            return;
+        }
+
+        $freqMinutos = max(1, (int) $config['frequencia_minutos']);
+        if ($config['ultima_sincronizacao'] && strtotime($config['ultima_sincronizacao']) > strtotime("-{$freqMinutos} minutes")) {
+            $this->json(['success' => true, 'acao' => 'ainda nao e hora (respeitando frequencia configurada)']);
+            return;
+        }
+
+        try {
+            $dados = (new \App\Services\WundergroundService())->buscarCondicaoAtual(
+                $config['wunderground_api_key'],
+                $config['wunderground_station_id']
+            );
+            $dados['local'] = $local;
+            $dados['automatic'] = '1';
+
+            $db = $GLOBALS['db'];
+            $sucesso = (bool) $db->insert('leituras_completas', $dados);
+
+            $configModel->registrarSincronizacao($sucesso, $sucesso ? null : $db->getLastError());
+
+            $this->json(['success' => $sucesso, 'acao' => 'sincronizado', 'dados' => $dados]);
+        } catch (\Throwable $e) {
+            $configModel->registrarSincronizacao(false, $e->getMessage());
+            $this->json(['success' => false, 'message' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * Preaquece o cache dos métodos mais pesados para evitar lentidão nos usuários.
      */
     public function preloadCache(): void

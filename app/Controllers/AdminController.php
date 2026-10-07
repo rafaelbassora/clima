@@ -11,8 +11,10 @@ use App\Models\UserModel;
 use App\Models\ChuvaCorrecaoModel;
 use App\Models\CidadaoModel;
 use App\Models\ChuvaCidadaModel;
+use App\Models\EstacaoConfigModel;
 use App\Services\TotpService;
 use App\Services\MailerService;
+use App\Services\WundergroundService;
 
 class AdminController extends Controller
 {
@@ -600,5 +602,74 @@ class AdminController extends Controller
     private function escapeHtml(string $texto): string
     {
         return htmlspecialchars($texto, ENT_QUOTES, 'UTF-8');
+    }
+
+    // === FONTE DE DADOS DA ESTAÇÃO (spoofing vs Wunderground API) ===
+
+    public function estacaoConfig(): void
+    {
+        $configModel = new EstacaoConfigModel();
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $fonte = $_POST['fonte_dados'] === 'wunderground' ? 'wunderground' : 'spoofing';
+            $apiKey = trim($_POST['wunderground_api_key'] ?? '');
+            $stationId = trim($_POST['wunderground_station_id'] ?? '');
+            $frequencia = max(1, (int) ($_POST['frequencia_minutos'] ?? 5));
+
+            $erro = null;
+            if ($fonte === 'wunderground' && ($apiKey === '' || $stationId === '')) {
+                $erro = 'Pra usar a fonte Wunderground, preencha a API Key e o Station ID.';
+            }
+
+            if (!$erro) {
+                $configModel->atualizar([
+                    'fonte_dados' => $fonte,
+                    'wunderground_api_key' => $apiKey,
+                    'wunderground_station_id' => $stationId,
+                    'frequencia_minutos' => $frequencia,
+                ]);
+                $_SESSION['estacao_config_sucesso'] = 'Configuração salva com sucesso.';
+                header('Location: /admin/estacao');
+                return;
+            }
+
+            $this->view('admin/estacao', [
+                'title' => 'Fonte de Dados da Estação',
+                'activeMenu' => 'estacao',
+                'config' => $configModel->getConfig(),
+                'erro' => $erro,
+            ], 'admin');
+            return;
+        }
+
+        $this->view('admin/estacao', [
+            'title' => 'Fonte de Dados da Estação',
+            'activeMenu' => 'estacao',
+            'config' => $configModel->getConfig(),
+        ], 'admin');
+    }
+
+    public function estacaoTestar(): void
+    {
+        $configModel = new EstacaoConfigModel();
+        $config = $configModel->getConfig();
+
+        if (empty($config['wunderground_api_key']) || empty($config['wunderground_station_id'])) {
+            $_SESSION['estacao_teste'] = ['sucesso' => false, 'erro' => 'Preencha e salve a API Key e o Station ID primeiro.'];
+            header('Location: /admin/estacao');
+            return;
+        }
+
+        try {
+            $dados = (new WundergroundService())->buscarCondicaoAtual(
+                $config['wunderground_api_key'],
+                $config['wunderground_station_id']
+            );
+            $_SESSION['estacao_teste'] = ['sucesso' => true, 'dados' => $dados];
+        } catch (\Throwable $e) {
+            $_SESSION['estacao_teste'] = ['sucesso' => false, 'erro' => $e->getMessage()];
+        }
+
+        header('Location: /admin/estacao');
     }
 }
