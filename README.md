@@ -239,7 +239,7 @@ Troque os arquivos de logo em `public/img/`.
 Domínio público ([Unlicense](LICENSE)) — projeto desenvolvido com recursos
 públicos. Qualquer um pode baixar, modificar, redistribuir e usar pra
 qualquer finalidade, comercial ou não, sem precisar pedir permissão nem dar
-crédito.
+crédito. Fornecido como está, sem garantias, responsabilidades ou suporte.
 
 ## Créditos
 
