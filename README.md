@@ -24,8 +24,7 @@ prefeitura adaptar e usar.
   (ex: `001-CENTRO`), nunca com nome ou endereço.
 - **Captura de dados da estação de duas formas, trocáveis pelo admin sem
   mexer em código**:
-  1. Intercepta o upload que a própria estação já faz pra um serviço de
-     nuvem (Wunderground/etc).
+  1. Intercepta o upload que a própria estação já faz.
   2. **API oficial do Weather Underground**: se a sua estação já sobe dados
      pra lá, dá pra puxar direto por uma API legítima, sem interceptar nada.
 - **Painel administrativo**: dashboard com estatísticas, gestão de usuários
