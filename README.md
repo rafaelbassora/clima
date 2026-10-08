@@ -93,12 +93,17 @@ Crie um banco MySQL e importe a estrutura:
 
 ```bash
 mysql -u seu_usuario -p seu_banco < database/schema.sql
+mysql -u seu_usuario -p seu_banco < database/seed.sql
 ```
 
 > Algumas tabelas do dump (`anos_consulta`, `opcoes_pergunta`, `perguntas`,
 > `chuva_old`, `local`) são resquícios de uma funcionalidade legada e não são
 > usadas pelo sistema atual — pode ignorá-las ou removê-las se quiser um banco
 > mais enxuto.
+
+> O `seed.sql` é obrigatório, não opcional: sem ele, as telas `/admin/estacao`
+> e a recalibração do nowcasting não têm em qual linha salvar as configurações
+> e as alterações somem silenciosamente.
 
 ### 4. Configuração
 
