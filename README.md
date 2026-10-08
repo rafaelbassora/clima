@@ -236,10 +236,10 @@ Troque os arquivos de logo em `public/img/`.
 
 ## Licença
 
-Projeto desenvolvido com recursos públicos — sinta-se à vontade pra adaptar
-pra sua prefeitura. Se for formalizar uma licença open-source, veja
-[choosealicense.com](https://choosealicense.com) pra escolher a que fizer
-mais sentido pro seu caso.
+Domínio público ([Unlicense](LICENSE)) — projeto desenvolvido com recursos
+públicos. Qualquer um pode baixar, modificar, redistribuir e usar pra
+qualquer finalidade, comercial ou não, sem precisar pedir permissão nem dar
+crédito.
 
 ## Créditos
 
