@@ -36,7 +36,7 @@
                 </div>
 
                 <div class="alert border-0 text-white mt-4 mb-4 shadow-sm" style="background-color:#2b3035;">
-                    <i class="bi bi-journal-check me-2"></i><strong>Orientador:</strong> Jonathan de Carvalho Silva
+                    <i class="bi bi-journal-check me-2"></i><strong>Orientador:</strong> Professor Jonathan de Carvalho Silva
                 </div>
 
                 <h5 class="mb-3 text-accent"><i class="bi bi-people"></i> Alunos Participantes:</h5>
