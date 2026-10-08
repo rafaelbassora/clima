@@ -31,7 +31,11 @@
                     Trabalho apresentado à disciplina de Trabalho de Conclusão de Curso de Engenharia da Computação da Universidade Virtual do Estado de São Paulo (Univesp).
                 </p>
 
-                <div class="alert bg-dark-subtle border-0 text-white mt-4 mb-4 shadow-sm">
+                <div class="alert alert-warning border-0 mt-4 mb-3 shadow-sm">
+                    <i class="bi bi-hourglass-split me-2"></i><strong>Em desenvolvimento</strong> — este trabalho ainda não foi apresentado/defendido. Título, texto e demais informações são provisórios e podem mudar até a versão final.
+                </div>
+
+                <div class="alert border-0 text-white mt-4 mb-4 shadow-sm" style="background-color:#2b3035;">
                     <i class="bi bi-journal-check me-2"></i><strong>Orientador:</strong> Jonathan de Carvalho Silva
                 </div>
 
@@ -112,7 +116,7 @@
                     Os resultados serão disponibilizados em uma plataforma web acessível, com interface intuitiva e relatórios preditivos, de modo a facilitar a compreensão e o uso das informações por agricultores, gestores públicos e cidadãos.
                 </p>
 
-                <div class="alert bg-dark-subtle border-0 text-white mt-4 mb-4 shadow-sm">
+                <div class="alert border-0 text-white mt-4 mb-4 shadow-sm" style="background-color:#2b3035;">
                     <i class="bi bi-journal-check me-2"></i><strong>Orientador:</strong> Renato Marcondes de Oliveira Berne
                 </div>
 
