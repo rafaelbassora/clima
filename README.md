@@ -59,7 +59,7 @@ core/
   Cache.php            Cache em arquivo
 cron/
   previsao-inmet.php       Busca a previsão do tempo no INMET
-  receber-estacao.php      Recebe dados da estação via DNS spoofing
+  receber-estacao.php      Recebe dados da estação interceptando o upload que ela já faz
   sensor-wifi-local.php    Lê um sensor WiFi local de temp/umidade (opcional)
   chuva-manual-padrao.php  Preenche 0mm/não-choveu se ninguém lançar a leitura manual do dia
 database/
@@ -179,13 +179,13 @@ php /caminho/para/clima/cron/chuva-manual-padrao.php
 
 `sensor-wifi-local.php` e `receber-estacao.php` são **opcionais** — só usados
 se sua prefeitura tiver, respectivamente, um sensor WiFi local próprio ou for
-usar a captura de dados via DNS spoofing (ver seção abaixo).
+usar a captura local de dados interceptando o upload da estação (ver seção abaixo).
 
 ### 7. Captura de dados da estação meteorológica
 
 Veja `/admin/estacao` depois de instalar — dá pra escolher entre:
 
-- **Local (DNS spoofing)**: configure o DNS da sua rede pra resolver o domínio
+- **Local**: configure o DNS da sua rede pra resolver o domínio
   que a estação já usa pra subir dados (ex: `api.algumaapidetempoXXXXXX.com`) pro IP do
   seu servidor, e aponte esse domínio pro script `cron/receber-estacao.php`.
 - **API Wunderground**: se a estação já sobe dados pro Weather Underground,
