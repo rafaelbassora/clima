@@ -234,6 +234,16 @@ Troque os arquivos de logo em `public/img/`.
 - 2FA (Google Authenticator) disponível pra contas de admin em `/admin/2fa`.
 - Recuperação de senha por e-mail com token de uso único (1h de validade).
 
+## Aviso sobre os dados
+
+Os dados meteorológicos, previsões e alertas exibidos pelo sistema têm caráter
+estritamente informativo e experimental: são gerados por estações automatizadas
+e modelos simples, sujeitos a falhas, atrasos e imprecisões. Não substituem os
+alertas oficiais da Defesa Civil nem os boletins do CPTEC/INPE ou INMET, e não
+devem ser a única base para decisões pessoais, agrícolas, comerciais ou de
+segurança. Os autores e as instituições envolvidas não se responsabilizam por
+decisões tomadas com base nessas informações.
+
 ## Licença
 
 Domínio público ([Unlicense](LICENSE)) — projeto desenvolvido com recursos
