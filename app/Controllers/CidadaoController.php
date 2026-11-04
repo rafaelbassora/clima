@@ -20,10 +20,33 @@ class CidadaoController extends Controller
         $this->chuvaModel = new ChuvaCidadaModel();
     }
 
+    /**
+     * Lê ?mes=&ano= da URL e devolve um mês válido (padrão: mês atual).
+     */
+    private function mesAnoSelecionado(int $anoInicial): array
+    {
+        $year = (int) $this->getParam('ano', date('Y'));
+        $month = (int) $this->getParam('mes', date('m'));
+
+        if ($month < 1 || $month > 12) {
+            $month = (int) date('m');
+        }
+        if ($year < $anoInicial || $year > (int) date('Y')) {
+            $year = (int) date('Y');
+        }
+        // não deixa escolher mês no futuro
+        if (sprintf('%04d-%02d', $year, $month) > date('Y-m')) {
+            $year = (int) date('Y');
+            $month = (int) date('m');
+        }
+
+        return [$year, $month];
+    }
+
     public function index(): void
     {
-        $year = (int) date('Y');
-        $month = (int) date('m');
+        $anoInicial = $this->chuvaModel->getAnoInicial();
+        [$year, $month] = $this->mesAnoSelecionado($anoInicial);
 
         $resumoMensal = $this->chuvaModel->getResumoMensalPublico($year, $month);
         $mediaCidade = count($resumoMensal) > 0
@@ -34,8 +57,14 @@ class CidadaoController extends Controller
             'pageTitle' => 'Pluviômetro Cidadão',
             'mediaCidade' => $mediaCidade,
             'totalEstacoes' => count($resumoMensal),
+            'resumoMensal' => $resumoMensal,
             'amostra' => $this->chuvaModel->getAmostraStatusHoje(10),
-            'mesAno' => $month . '/' . $year,
+            'mesAno' => ChuvaCidadaModel::MESES[$month] . ' de ' . $year,
+            'year' => $year,
+            'month' => $month,
+            'anoInicial' => $anoInicial,
+            'meses' => ChuvaCidadaModel::MESES,
+            'mesAtual' => $year === (int) date('Y') && $month === (int) date('m'),
         ], 'main');
     }
 
@@ -49,10 +78,21 @@ class CidadaoController extends Controller
             return;
         }
 
+        $anoInicial = $this->chuvaModel->getAnoInicial();
+        [$year, $month] = $this->mesAnoSelecionado($anoInicial);
+        $historicoMes = $this->chuvaModel->getHistoricoPorEstacaoMes($estacao['station_code'], $year, $month);
+
         $this->view('cidadao/estacao', [
             'pageTitle' => 'Estação ' . $estacao['station_code'],
             'estacao' => $estacao,
-            'historico' => $this->chuvaModel->getHistoricoPorEstacao($codigo),
+            'historico' => $historicoMes,
+            'totalMes' => array_sum(array_map('floatval', array_column($historicoMes, 'medida_mm'))),
+            'totaisMensais' => $this->chuvaModel->getTotaisMensaisPorEstacao($estacao['station_code'], 12),
+            'mesAno' => ChuvaCidadaModel::MESES[$month] . ' de ' . $year,
+            'year' => $year,
+            'month' => $month,
+            'anoInicial' => $anoInicial,
+            'meses' => ChuvaCidadaModel::MESES,
         ], 'main');
     }
 

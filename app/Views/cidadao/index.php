@@ -1,8 +1,14 @@
 <?php
 /** @var float $mediaCidade */
 /** @var int $totalEstacoes */
+/** @var array $resumoMensal */
 /** @var array $amostra */
 /** @var string $mesAno */
+/** @var int $year */
+/** @var int $month */
+/** @var int $anoInicial */
+/** @var array $meses */
+/** @var bool $mesAtual */
 ?>
 
 <div class="row align-items-center mb-4 g-3">
@@ -26,6 +32,28 @@
     </div>
 </div>
 
+<form action="<?= url('/pluviometro-cidadao') ?>" method="GET" class="row g-2 justify-content-md-end mb-3">
+    <div class="col-auto">
+        <select name="mes" class="form-select form-select-sm bg-dark text-white border-secondary" aria-label="Mês">
+            <?php foreach ($meses as $m => $nome): ?>
+                <option value="<?= $m ?>" <?= $m === $month ? 'selected' : '' ?>><?= $nome ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div class="col-auto">
+        <select name="ano" class="form-select form-select-sm bg-dark text-white border-secondary" aria-label="Ano">
+            <?php for ($y = (int) date('Y'); $y >= $anoInicial; $y--): ?>
+                <option value="<?= $y ?>" <?= $y === $year ? 'selected' : '' ?>><?= $y ?></option>
+            <?php endfor; ?>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button type="submit" class="btn btn-sm btn-primary px-3">
+            <i class="bi bi-search"></i> Filtrar
+        </button>
+    </div>
+</form>
+
 <div class="alert bg-primary bg-opacity-10 border border-primary border-opacity-20 d-flex align-items-center gap-3 p-4 mb-4 fade-in-up">
     <div class="bg-primary bg-opacity-25 p-3 rounded-circle text-primary">
         <i class="bi bi-droplet-half fs-3"></i>
@@ -37,6 +65,55 @@
         <p class="mb-0 text-muted small">
             Média do acumulado de <?= $totalEstacoes ?> estação(ões) cidadã(s) em <?= htmlspecialchars($mesAno) ?>.
         </p>
+    </div>
+</div>
+
+<div class="weather-card fade-in-up mb-4">
+    <div class="card-header-custom">
+        <i class="bi bi-calendar3"></i>
+        Acumulado por estação — <?= htmlspecialchars($mesAno) ?>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table-weather">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Bairro</th>
+                        <th>Acumulado</th>
+                        <th>Dias com chuva</th>
+                        <th>Maior registro</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if (empty($resumoMensal)): ?>
+                        <tr>
+                            <td colspan="6" class="text-center py-4 text-muted">
+                                Nenhum lançamento das estações cidadãs em <?= htmlspecialchars($mesAno) ?>.
+                            </td>
+                        </tr>
+                    <?php endif; ?>
+                    <?php foreach ($resumoMensal as $row): ?>
+                        <tr>
+                            <td class="fw-bold"><?= htmlspecialchars($row['station_code']) ?></td>
+                            <td><?= htmlspecialchars($row['bairro']) ?></td>
+                            <td><strong><?= number_format((float) $row['total_mm'], 2, ',', '.') ?> mm</strong></td>
+                            <td>
+                                <?= (int) $row['dias_chuva'] ?>
+                                <span class="text-muted small">de <?= (int) $row['dias_lancados'] ?> lançamento(s)</span>
+                            </td>
+                            <td><?= number_format((float) $row['maior_mm'], 2, ',', '.') ?> mm</td>
+                            <td class="text-end">
+                                <a href="<?= url('/pluviometro-cidadao/estacao') ?>?codigo=<?= urlencode($row['station_code']) ?>&mes=<?= $month ?>&ano=<?= $year ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3">
+                                    Ver mês <i class="bi bi-arrow-right ms-1"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
     </div>
 </div>
 
