@@ -50,24 +50,32 @@
 <div class="weather-card fade-in-up">
     <div class="card-body p-0">
         <!-- Tabs Header -->
+        <?php $temAuto = $temAuto ?? true; ?>
         <ul class="nav nav-tabs nav-justified border-0" id="rainTabs" role="tablist">
+            <?php if ($temAuto): ?>
             <li class="nav-item" role="presentation">
                 <button class="nav-link active py-3 border-0 rounded-0" id="auto-tab" data-bs-toggle="tab" data-bs-target="#auto-content" type="button" role="tab">
                     <i class="bi bi-robot me-2"></i>Coleta Automatizada
                 </button>
             </li>
+            <?php endif; ?>
             <li class="nav-item" role="presentation">
-                <button class="nav-link py-3 border-0 rounded-0" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-content" type="button" role="tab">
+                <button class="nav-link <?= $temAuto ? '' : 'active' ?> py-3 border-0 rounded-0" id="manual-tab" data-bs-toggle="tab" data-bs-target="#manual-content" type="button" role="tab">
                     <i class="bi bi-hand-index-thumb me-2"></i>Pluviômetro Manual
                 </button>
             </li>
         </ul>
+        <?php if (!$temAuto && !empty($primeiroDiaAuto)): ?>
+            <p class="small text-muted text-center mb-0 pt-2">
+                <i class="bi bi-info-circle"></i> A coleta automatizada de chuva começou em <?= date('d/m/Y', strtotime($primeiroDiaAuto)) ?> — para este período há apenas o pluviômetro manual.
+            </p>
+        <?php endif; ?>
 
         <!-- Tabs Content -->
         <div class="tab-content border-top border-secondary border-opacity-25" id="rainTabsContent">
-            
+
+            <?php if ($temAuto): ?>
             <!-- Tab Automática (Primeira) -->
-            <div class="tab-pane fade show active p-4" id="auto-content" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h5 class="mb-0 text-white-50"><?= $month === 'all' ? 'Resumo Anual' : 'Resumo Mensal' ?> (Automático)</h5>
@@ -107,9 +115,10 @@
                     </div>
                 <?php endif; ?>
             </div>
+            <?php endif; ?>
 
             <!-- Tab Manual (Segunda) -->
-            <div class="tab-pane fade p-4" id="manual-content" role="tabpanel">
+            <div class="tab-pane fade <?= $temAuto ? '' : 'show active' ?> p-4" id="manual-content" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h5 class="mb-0 text-white-50"><?= $month === 'all' ? 'Resumo Anual' : 'Resumo Mensal' ?> (Manual)</h5>

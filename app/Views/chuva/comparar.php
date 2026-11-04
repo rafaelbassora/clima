@@ -49,16 +49,16 @@ $textoMedia = $anosMedia ? ($anosMedia[0] === $anosMedia[1] ? (string) $anosMedi
     <input type="hidden" name="local" value="<?= htmlspecialchars($local) ?>">
     <input type="hidden" name="modo" value="<?= $modo ?>">
     <div class="row g-3 align-items-end">
-        <div class="col-md-3">
+        <div class="col-md-5 col-lg-4">
             <label class="form-label small fw-bold mb-1" for="fonte">Fonte dos dados</label>
-            <select name="fonte" id="fonte" class="form-select form-select-sm">
+            <select name="fonte" id="fonte" class="form-select">
                 <option value="manual" <?= $fonte === 'manual' ? 'selected' : '' ?>>Pluviômetro Manual (histórico maior)</option>
                 <option value="auto" <?= $fonte === 'auto' ? 'selected' : '' ?>>Coleta Automatizada</option>
             </select>
         </div>
 
         <?php if ($modo === 'anos'): ?>
-            <div class="col-md-7">
+            <div class="col-md-7 col-lg-6">
                 <span class="form-label small fw-bold mb-1 d-block">Anos (até 6)</span>
                 <div class="d-flex flex-wrap gap-2">
                     <?php for ($y = (int) date('Y'); $y >= $anoInicial; $y--): ?>
@@ -67,37 +67,43 @@ $textoMedia = $anosMedia ? ($anosMedia[0] === $anosMedia[1] ? (string) $anosMedi
                     <?php endfor; ?>
                 </div>
             </div>
-        <?php else: ?>
-            <div class="col-md-7">
-                <span class="form-label small fw-bold mb-1 d-block">Meses (até 4)</span>
-                <div class="row g-2">
-                    <?php for ($i = 0; $i < 4; $i++): ?>
-                        <?php [$ia, $im] = $itens[$i] ?? [null, null]; ?>
-                        <div class="col-6 col-lg-3">
-                            <div class="input-group input-group-sm">
-                                <select name="m[]" class="form-select" aria-label="Mês <?= $i + 1 ?>">
-                                    <option value="">—</option>
-                                    <?php foreach ($mesesCurtos as $m => $nome): ?>
-                                        <option value="<?= $m ?>" <?= $im === $m ? 'selected' : '' ?>><?= $nome ?></option>
-                                    <?php endforeach; ?>
-                                </select>
-                                <select name="a[]" class="form-select" aria-label="Ano <?= $i + 1 ?>">
-                                    <?php for ($y = (int) date('Y'); $y >= $anoInicial; $y--): ?>
-                                        <option value="<?= $y ?>" <?= ($ia ?? (int) date('Y')) === $y ? 'selected' : '' ?>><?= $y ?></option>
-                                    <?php endfor; ?>
-                                </select>
-                            </div>
-                        </div>
-                    <?php endfor; ?>
-                </div>
+            <div class="col-lg-2">
+                <button type="submit" class="btn btn-primary px-3 w-100">
+                    <i class="bi bi-search"></i> Comparar
+                </button>
             </div>
-        <?php endif; ?>
-
-        <div class="col-md-2 text-md-end">
-            <button type="submit" class="btn btn-sm btn-primary px-3 w-100">
-                <i class="bi bi-search"></i> Comparar
-            </button>
+        <?php else: ?>
+            <div class="col-md-3 col-lg-2 ms-md-auto">
+                <button type="submit" class="btn btn-primary px-3 w-100">
+                    <i class="bi bi-search"></i> Comparar
+                </button>
+            </div>
         </div>
+
+        <div class="row g-3 mt-0">
+            <?php for ($i = 0; $i < 3; $i++): ?>
+                <?php [$ia, $im] = $itens[$i] ?? [null, null]; ?>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold mb-1" for="mes<?= $i ?>">
+                        <span class="d-inline-block rounded-circle me-1" style="width: 10px; height: 10px; background: <?= $cores[$i] ?>;"></span>
+                        <?= $i + 1 ?>º mês<?= $i === 2 ? ' <span class="text-muted fw-normal">(opcional)</span>' : '' ?>
+                    </label>
+                    <div class="input-group">
+                        <select name="m[]" id="mes<?= $i ?>" class="form-select" aria-label="Mês do <?= $i + 1 ?>º período">
+                            <option value="">— nenhum —</option>
+                            <?php foreach ($meses as $m => $nome): ?>
+                                <option value="<?= $m ?>" <?= $im === $m ? 'selected' : '' ?>><?= $nome ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                        <select name="a[]" class="form-select" style="max-width: 6.5rem;" aria-label="Ano do <?= $i + 1 ?>º período">
+                            <?php for ($y = (int) date('Y'); $y >= $anoInicial; $y--): ?>
+                                <option value="<?= $y ?>" <?= ($ia ?? (int) date('Y')) === $y ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                </div>
+            <?php endfor; ?>
+        <?php endif; ?>
     </div>
 </form>
 
@@ -114,7 +120,7 @@ $textoMedia = $anosMedia ? ($anosMedia[0] === $anosMedia[1] ? (string) $anosMedi
                     </div>
                     <div class="fs-4 fw-bold"><?= $fmt($s['total']) ?> <small class="fs-6 text-muted">mm</small></div>
                     <div class="small text-muted">Até <?= date('d/m', strtotime($hoje)) ?>: <strong><?= $fmt($s['ate_hoje']) ?> mm</strong></div>
-                    <div class="small text-muted"><?= $s['dias_chuva'] ?> dias com chuva</div>
+                    <div class="small text-muted"><?= $s['dias_chuva'] ?> <?= $s['dias_chuva'] === 1 ? 'dia' : 'dias' ?> com chuva</div>
                     <?php if ($s['maior']['dia']): ?>
                         <div class="small text-muted">Maior: <?= $fmt($s['maior']['mm']) ?> mm (<?= date('d/m', strtotime($s['maior']['dia'])) ?>)</div>
                     <?php endif; ?>
@@ -212,7 +218,7 @@ $textoMedia = $anosMedia ? ($anosMedia[0] === $anosMedia[1] ? (string) $anosMedi
                 ? ($s['total'] - $s['media_historica']) / $s['media_historica'] * 100
                 : null;
             ?>
-            <div class="col-6 col-lg-3">
+            <div class="col-md-4">
                 <div class="weather-card h-100 p-3" style="border-top: 4px solid <?= $cores[$i++ % count($cores)] ?>;">
                     <div class="small text-muted fw-bold">
                         <?= $meses[$s['mes']] ?> de <?= $s['ano'] ?>
@@ -227,7 +233,7 @@ $textoMedia = $anosMedia ? ($anosMedia[0] === $anosMedia[1] ? (string) $anosMedi
                             <?php endif; ?>
                         </div>
                     <?php endif; ?>
-                    <div class="small text-muted"><?= $s['dias_chuva'] ?> dias com chuva</div>
+                    <div class="small text-muted"><?= $s['dias_chuva'] ?> <?= $s['dias_chuva'] === 1 ? 'dia' : 'dias' ?> com chuva</div>
                     <?php if ($s['maior']['dia']): ?>
                         <div class="small text-muted">Maior: <?= $fmt($s['maior']['mm']) ?> mm (dia <?= (int) substr($s['maior']['dia'], 8, 2) ?>)</div>
                     <?php endif; ?>

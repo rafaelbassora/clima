@@ -21,8 +21,16 @@ class ChuvaController extends Controller
         // Busca dados manuais (tabela 'chuva')
         $chuvaManual = $model->getChuvaManual($local, $year, $month);
         
-        // Busca dados automáticos (tabela 'leituras_completas', automatic = '1')
-        $chuvaAuto = $model->getChuvaResumo($local, $year, $month, '1');
+        // Busca dados automáticos (tabela 'leituras_completas', automatic = '1'),
+        // só se o período escolhido alcança o início da coleta automática de chuva
+        $primeiroDiaAuto = $model->getPrimeiroDiaChuva($local, 'auto');
+        $fimPeriodo = $month === 'all'
+            ? "{$year}-12-31"
+            : date('Y-m-t', strtotime(sprintf('%04d-%02d-01', $year, (int) $month)));
+        $temAuto = $primeiroDiaAuto !== null && $fimPeriodo >= $primeiroDiaAuto;
+        $chuvaAuto = $temAuto
+            ? $model->getChuvaResumo($local, $year, $month, '1')
+            : ['detalhe' => [], 'total' => '0.00'];
 
         // Estatísticas e Recordes
         $estatisticas = $model->getEstatisticasChuva($local);
@@ -33,6 +41,8 @@ class ChuvaController extends Controller
             'year'         => $year,
             'month'        => $month,
             'chuvaAuto'    => $chuvaAuto,
+            'temAuto'      => $temAuto,
+            'primeiroDiaAuto' => $primeiroDiaAuto,
             'chuvaManual'  => $chuvaManual,
             'estatisticas' => $estatisticas,
             'meses'        => $model->getMeses(),
@@ -75,7 +85,7 @@ class ChuvaController extends Controller
         }
         rsort($anos);
 
-        // Meses: itens no formato AAAA-MM (ou pares m[]/a[] vindos do formulário), no máximo 4
+        // Meses: itens no formato AAAA-MM (ou pares m[]/a[] vindos do formulário), no máximo 3
         $entrada = (array) ($_GET['itens'] ?? []);
         $ms = (array) ($_GET['m'] ?? []);
         $as = (array) ($_GET['a'] ?? []);
@@ -95,7 +105,7 @@ class ChuvaController extends Controller
                 $itens[] = [$a, $m];
             }
         }
-        $itens = array_slice($itens, 0, 4);
+        $itens = array_slice($itens, 0, 3);
         if (!$itens) {
             // padrão: este mês, o mesmo mês do ano passado e o mês anterior
             foreach ([$mesAtual, date('Y-m', strtotime('-1 year')), date('Y-m', strtotime('first day of last month'))] as $ym) {
