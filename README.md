@@ -6,7 +6,7 @@ tempo, alertas, notícias e um algoritmo de "nowcasting" (previsão de chuva de
 curtíssimo prazo) que se recalibra sozinho com base na precisão real.
 
 Criado originalmente pela Prefeitura da Estância Turística de Pereira Barreto
-(SP), em parceria com a Univesp e o SAAE, e liberado aqui pra qualquer outra
+(SP), em parceria com alunos da Univesp e o SAAE, e liberado aqui pra qualquer outra
 prefeitura adaptar e usar.
 
 ## Funcionalidades
