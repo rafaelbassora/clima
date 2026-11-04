@@ -48,9 +48,7 @@ class Controller
     {
         http_response_code($statusCode);
         header('Content-Type: application/json; charset=utf-8');
-        header('Cache-Control: no-cache, no-store, must-revalidate');
-        header('Pragma: no-cache');
-        header('Expires: 0');
+        header('Cache-Control: no-cache, must-revalidate');
         echo json_encode($data, JSON_UNESCAPED_UNICODE);
     }
 

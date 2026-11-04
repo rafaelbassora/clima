@@ -1,5 +1,5 @@
-﻿-- Schema do banco de dados 'dados' - Sistema Clima
--- Gerado automaticamente a partir da instancia de producao (so estrutura, sem dados)
+-- Schema do banco de dados 'dados' — Sistema Clima
+-- Gerado automaticamente a partir da instância de produção (só estrutura, sem dados)
 
 SET FOREIGN_KEY_CHECKS=0;
 
@@ -404,4 +404,3 @@ CREATE TABLE `usuarios` (
 ) ENGINE=InnoDB AUTO_INCREMENT=13 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 SET FOREIGN_KEY_CHECKS=1;
-

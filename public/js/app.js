@@ -7,22 +7,6 @@ document.addEventListener('DOMContentLoaded', () => {
     initClock();
     initAjaxRefresh();
     initTooltips();
-
-    // Atualiza imediatamente quando a aba volta a ficar visível (evita relógio/dados travados ao alternar guias)
-    document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') {
-            const clockEl = document.getElementById('topbar-clock');
-            if (clockEl) {
-                const now = new Date();
-                const h = String(now.getHours()).padStart(2, '0');
-                const m = String(now.getMinutes()).padStart(2, '0');
-                const s = String(now.getSeconds()).padStart(2, '0');
-                clockEl.innerHTML = `${h}:${m}<span class="clock-seconds">:${s}</span>`;
-            }
-            const local = new URLSearchParams(window.location.search).get('local') || '1';
-            fetchClimaAtual(local);
-        }
-    });
 });
 
 /**
