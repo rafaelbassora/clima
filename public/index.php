@@ -71,6 +71,7 @@ $router->get('/inicio',             'InicioController',      'index');
 $router->get('/termos',               'TermosController',      'index');
 $router->get('/alertas',              'InicioController',      'alertas');
 $router->get('/inicio-chuva',       'ChuvaController',       'index');
+$router->get('/inicio-chuva/comparar', 'ChuvaController',     'comparar');
 $router->get('/inicio-et',          'EtController',          'index');
 $router->get('/inicio-temperatura', 'TemperaturaController', 'index');
 $router->get('/inicio-umidade',     'UmidadeController',      'index');

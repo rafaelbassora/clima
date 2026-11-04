@@ -631,7 +631,7 @@ class LeituraModel
                 // Reagrupa por dia (com a data exata) pra poder aplicar as correções antes de somar o mês
                 $diarios = $this->db->rawQuery(
                     "SELECT DATE(created_at) as dia, MONTH(created_at) as mes, MAX(rain) as max_chuva
-                     FROM leituras_completas
+                     FROM leituras_completas FORCE INDEX (idx_chuva_auto)
                      WHERE local = ? AND created_at BETWEEN ? AND ? AND automatic = ?
                      GROUP BY dia
                      ORDER BY dia",
@@ -664,7 +664,7 @@ class LeituraModel
 
             $results = $this->db->rawQuery(
                 "SELECT DATE(created_at) as data, MAX(rain) as max_chuva
-                 FROM leituras_completas
+                 FROM leituras_completas FORCE INDEX (idx_chuva_auto)
                  WHERE local = ? AND created_at BETWEEN ? AND ? AND automatic = ?
                  GROUP BY DATE(created_at)
                  ORDER BY data DESC",
@@ -755,6 +755,83 @@ class LeituraModel
                 'detalhe' => $dados,
                 'total' => number_format($totalGeral, 2)
             ];
+        });
+    }
+
+    /**
+     * Chuva por dia (mm) num período, pra comparação entre meses/anos.
+     * $fonte: 'manual' (tabela chuva) ou 'auto' (estação, máx. do dia / 10 + correções,
+     * mesma regra do getChuvaResumo). Retorna ['Y-m-d' => mm].
+     */
+    public function getChuvaDiariaPeriodo(string $local, string $fonte, string $inicio, string $fim): array
+    {
+        $dias = [];
+
+        if ($fonte === 'manual') {
+            $rows = $this->cache->remember("chuva_diaria_manual_{$local}_{$inicio}_{$fim}", $this->getTtlHistorico(), function () use ($local, $inicio, $fim) {
+                return $this->db->rawQuery(
+                    "SELECT DATE(data) as dia, SUM(medida) as mm
+                     FROM chuva
+                     WHERE local = ? AND data BETWEEN ? AND ?
+                     GROUP BY DATE(data)",
+                    [$local, "{$inicio} 00:00:00", "{$fim} 23:59:59"]
+                );
+            });
+            foreach ($rows as $row) {
+                $dias[$row['dia']] = (float) $row['mm'];
+            }
+            return $dias;
+        }
+
+        // Automático: busca mês a mês; meses já fechados ficam 24h em cache
+        $mesAtual = date('Y-m');
+        $cursor = new \DateTime(substr($inicio, 0, 7) . '-01');
+        $limite = new \DateTime($fim);
+        while ($cursor <= $limite) {
+            $ym = $cursor->format('Y-m');
+            $s = $cursor->format('Y-m-01 00:00:00');
+            $e = $cursor->format('Y-m-t 23:59:59');
+            $ttl = $ym < $mesAtual ? 86400 : $this->getTtlHistorico();
+
+            $rows = $this->cache->remember("chuva_diaria_auto_{$local}_{$ym}", $ttl, function () use ($local, $s, $e) {
+                return $this->db->rawQuery(
+                    "SELECT DATE(created_at) as dia, MAX(rain) as max_chuva
+                     FROM leituras_completas FORCE INDEX (idx_chuva_auto)
+                     WHERE local = ? AND automatic = '1' AND created_at BETWEEN ? AND ?
+                     GROUP BY DATE(created_at)",
+                    [$local, $s, $e]
+                );
+            });
+            foreach ($rows as $row) {
+                $dias[$row['dia']] = (float) $row['max_chuva'] / 10;
+            }
+            $cursor->modify('first day of next month');
+        }
+
+        // Correções manuais (sem cache, pra refletir na hora o que o admin lançar)
+        $correcoes = $this->chuvaCorrecao->getMapaPeriodo($local, "{$inicio} 00:00:00", "{$fim} 23:59:59");
+        foreach ($dias as $dia => $valor) {
+            $dias[$dia] = $valor + ($correcoes[$dia] ?? 0);
+        }
+
+        return array_filter($dias, fn ($dia) => $dia >= $inicio && $dia <= $fim, ARRAY_FILTER_USE_KEY);
+    }
+
+    /**
+     * Primeiro dia com dado de chuva da fonte ('Y-m-d'), pra limitar os filtros e a média histórica.
+     */
+    public function getPrimeiroDiaChuva(string $local, string $fonte): ?string
+    {
+        return $this->cache->remember("chuva_primeiro_dia_v2_{$local}_{$fonte}", 86400, function () use ($local, $fonte) {
+            // na estação automática, conta só a partir da 1ª leitura com o pluviômetro funcionando (rain preenchido)
+            $row = $fonte === 'manual'
+                ? $this->db->rawQueryOne("SELECT DATE(MIN(data)) as dia FROM chuva WHERE local = ? AND medida IS NOT NULL", [$local])
+                : $this->db->rawQueryOne(
+                    "SELECT DATE(MIN(created_at)) as dia FROM leituras_completas FORCE INDEX (idx_chuva_auto)
+                     WHERE local = ? AND automatic = '1' AND rain IS NOT NULL",
+                    [$local]
+                );
+            return $row['dia'] ?? null;
         });
     }
 

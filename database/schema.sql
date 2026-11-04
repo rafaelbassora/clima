@@ -190,7 +190,8 @@ CREATE TABLE `leituras_completas` (
   PRIMARY KEY (`id`),
   KEY `idx_wid_date` (`wid`,`created_at`),
   KEY `idx_local_date` (`local`,`created_at`),
-  KEY `idx_data_local` (`local`,`data_leitura`)
+  KEY `idx_data_local` (`local`,`data_leitura`),
+  KEY `idx_chuva_auto` (`local`,`automatic`,`created_at`,`rain`)
 ) ENGINE=InnoDB AUTO_INCREMENT=1566264 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------

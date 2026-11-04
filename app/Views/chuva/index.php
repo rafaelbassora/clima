@@ -13,6 +13,9 @@
             <i class="bi bi-cloud-rain-heavy-fill text-primary"></i> Índice Pluviométrico
             <small class="text-muted ms-2" style="font-size: 0.75rem; font-weight: 400;">(Dados atualizados a cada 1h)</small>
         </h4>
+        <a href="<?= url('/inicio-chuva/comparar') ?>?local=<?= urlencode($local) ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3 mt-2">
+            <i class="bi bi-bar-chart-line me-1"></i> Comparar meses e anos
+        </a>
     </div>
     <div class="col-md-6">
         <form action="<?= url('/inicio-chuva') ?>" method="GET" class="row g-2 justify-content-md-end">
