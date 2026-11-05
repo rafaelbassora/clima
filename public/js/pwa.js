@@ -94,10 +94,20 @@
         requestAnimationFrame(function () { requestAnimationFrame(function () { banner && banner.classList.add('visivel'); }); });
     }
 
+    // só oferece a instalação depois que a pessoa respondeu o aviso de cookies (pra não empilhar dois avisos)
+    function depoisDoConsentimento(fn, espera) {
+        var c = window.climaConsentimento;
+        if (!c || c.escolha() !== null) {
+            setTimeout(fn, espera);
+            return;
+        }
+        window.addEventListener('clima:consentimento', function () { setTimeout(fn, 1500); }, { once: true });
+    }
+
     window.addEventListener('beforeinstallprompt', function (e) {
         e.preventDefault();
         promptGuardado = e;
-        setTimeout(function () { mostrar('padrao'); }, 3000);
+        depoisDoConsentimento(function () { mostrar('padrao'); }, 3000);
     });
 
     window.addEventListener('appinstalled', function () {
@@ -106,6 +116,6 @@
     });
 
     if (ehSafari) {
-        setTimeout(function () { mostrar('ios'); }, 3000);
+        depoisDoConsentimento(function () { mostrar('ios'); }, 3000);
     }
 })();

@@ -5,7 +5,7 @@
  * - Bibliotecas de CDN (Bootstrap, ícones, Chart.js): cache primeiro (versões fixas).
  * - Área administrativa, login, painel do cidadão e API: nunca passam pelo cache.
  */
-const VERSAO = 'clima-v1';
+const VERSAO = 'clima-v2';
 const CACHE_ESTATICO = `${VERSAO}-estatico`;
 const CACHE_PAGINAS = `${VERSAO}-paginas`;
 const CACHE_CDN = `${VERSAO}-cdn`;
@@ -16,6 +16,7 @@ const PRE_CACHE = [
     '/css/app.css',
     '/js/app.js',
     '/js/pwa.js',
+    '/js/consentimento.js',
     '/img/icons/icon-192.png',
     '/img/icons/icon-512.png',
     '/manifest.webmanifest',

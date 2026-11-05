@@ -16,14 +16,9 @@ $parceiros = $config['parceiros'] ?? [];
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <!-- Google Analytics -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=<?= htmlspecialchars($config['ga_id']) ?>"></script>
-    <script>
-        window.dataLayer = window.dataLayer || [];
-        function gtag(){dataLayer.push(arguments);}
-        gtag('js', new Date());
-        gtag('config', '<?= htmlspecialchars($config['ga_id']) ?>');
-    </script>
+    <!-- Google Analytics: só carrega depois do consentimento (ver /js/consentimento.js) -->
+    <script>window.CLIMA_GA_ID = <?= json_encode((string) ($config['ga_id'] ?? '')) ?>;</script>
+    <script src="<?= $assetsBase ?>/js/consentimento.js?v=1" defer></script>
 
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -125,6 +120,7 @@ $parceiros = $config['parceiros'] ?? [];
                 ['url' => url('/previsao-do-tempo') . '?local=1',                   'icon' => 'bi-umbrella-fill',        'label' => 'Previsão do Tempo',    'id' => 'previsao'],
                 ['url' => url('/noticias'),                                      'icon' => 'bi-newspaper',            'label' => 'Notícias',             'id' => 'noticias'],
                 ['url' => url('/termos'),                                        'icon' => 'bi-file-earmark-text-fill', 'label' => 'Termos de Uso',    'id' => 'termos'],
+                ['url' => url('/privacidade'),                                   'icon' => 'bi-shield-check',          'label' => 'Privacidade',      'id' => 'privacidade'],
             ];
             $activeMenu = $activeMenu ?? '';
             foreach ($menuItems as $item):
@@ -207,9 +203,14 @@ $parceiros = $config['parceiros'] ?? [];
             <?php endif; ?>
             <?php if (!empty($footerAviso)): ?>
             <div class="footer-disclaimer mx-auto" style="max-width: 900px; font-size: 0.75rem; color: rgba(255,255,255,0.4); line-height: 1.5;">
-                <?= htmlspecialchars($footerAviso) ?> Ao utilizar este sistema, você concorda com os nossos <a href="<?= url('/termos') ?>" class="text-white text-decoration-underline opacity-75">Termos de Uso</a>. Os dados meteorológicos possuem caráter informativo e estão sujeitos a variações técnicas. Consulte sempre os canais oficiais da Defesa Civil.
+                <?= htmlspecialchars($footerAviso) ?> Ao utilizar este sistema, você concorda com os nossos <a href="<?= url('/termos') ?>" class="text-white text-decoration-underline opacity-75">Termos de Uso</a> e com a <a href="<?= url('/privacidade') ?>" class="text-white text-decoration-underline opacity-75">Política de Privacidade</a>. Os dados meteorológicos possuem caráter informativo e estão sujeitos a variações técnicas. Consulte sempre os canais oficiais da Defesa Civil.
             </div>
             <?php endif; ?>
+            <p class="mt-2 mb-0" style="font-size: 0.75rem;">
+                <a href="<?= url('/privacidade') ?>" class="text-white-50">Política de Privacidade</a>
+                <span class="text-white-50 mx-1">·</span>
+                <a href="#" data-preferencias-cookies class="text-white-50">Preferências de cookies</a>
+            </p>
         </div>
     </footer>
 
@@ -224,6 +225,6 @@ $parceiros = $config['parceiros'] ?? [];
         };
     </script>
     <script src="<?= $assetsBase ?>/js/app.js?v=<?= time() ?>"></script>
-    <script src="<?= $assetsBase ?>/js/pwa.js?v=1" defer></script>
+    <script src="<?= $assetsBase ?>/js/pwa.js?v=2" defer></script>
 </body>
 </html>

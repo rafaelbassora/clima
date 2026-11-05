@@ -69,6 +69,7 @@ $router = new \Core\Router();
 $router->get('/',                   'InicioController',      'index');
 $router->get('/inicio',             'InicioController',      'index');
 $router->get('/termos',               'TermosController',      'index');
+$router->get('/privacidade',          'PrivacidadeController', 'index');
 $router->get('/alertas',              'InicioController',      'alertas');
 $router->get('/inicio-chuva',       'ChuvaController',       'index');
 $router->get('/inicio-chuva/comparar', 'ChuvaController',     'comparar');
