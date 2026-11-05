@@ -836,80 +836,109 @@ class LeituraModel
     }
 
     /**
+     * Resumo diário de temperatura: mínima, máxima e o horário (1ª ocorrência) de cada uma.
+     * Busca mês a mês numa única consulta por mês; meses já fechados ficam 30 dias em cache
+     * (temperatura passada não muda), o mês atual segue o TTL curto.
+     * Retorna ['Y-m-d' => ['tmin' => float, 'tmax' => float, 'hmin' => 'HH:MM', 'hmax' => 'HH:MM']] (°C).
+     */
+    public function getTemperaturaDiaria(string $local, string $inicio, string $fim): array
+    {
+        $dias = [];
+        $mesAtual = date('Y-m');
+        $cursor = new \DateTime(substr($inicio, 0, 7) . '-01');
+        $limite = new \DateTime($fim);
+
+        while ($cursor <= $limite) {
+            $ym = $cursor->format('Y-m');
+            if ($ym > $mesAtual) {
+                break;
+            }
+            $s = $cursor->format('Y-m-01 00:00:00');
+            $e = $cursor->format('Y-m-t 23:59:59');
+            $ttl = $ym < $mesAtual ? 2592000 : $this->getTtlHistorico();
+
+            $rows = $this->cache->remember("temp_diaria_{$local}_{$ym}", $ttl, function () use ($local, $s, $e) {
+                return $this->db->rawQuery(
+                    "SELECT DATE(created_at) as dia, MIN(temp) as tmin, MAX(temp) as tmax,
+                            SUBSTRING_INDEX(GROUP_CONCAT(DATE_FORMAT(created_at, '%H:%i') ORDER BY temp ASC, created_at ASC), ',', 1) as hmin,
+                            SUBSTRING_INDEX(GROUP_CONCAT(DATE_FORMAT(created_at, '%H:%i') ORDER BY temp DESC, created_at ASC), ',', 1) as hmax
+                     FROM leituras_completas FORCE INDEX (idx_temp)
+                     WHERE local = ? AND created_at BETWEEN ? AND ? AND temp > 0
+                     GROUP BY DATE(created_at)",
+                    [$local, $s, $e]
+                );
+            });
+
+            foreach ($rows as $row) {
+                $dias[$row['dia']] = [
+                    'tmin' => (int) $row['tmin'] / 10,
+                    'tmax' => (int) $row['tmax'] / 10,
+                    'hmin' => $row['hmin'] ?: '--:--',
+                    'hmax' => $row['hmax'] ?: '--:--',
+                ];
+            }
+            $cursor->modify('first day of next month');
+        }
+
+        $dias = array_filter($dias, fn ($dia) => $dia >= $inicio && $dia <= $fim, ARRAY_FILTER_USE_KEY);
+        ksort($dias);
+        return $dias;
+    }
+
+    /**
+     * Primeiro dia com leitura de temperatura ('Y-m-d').
+     */
+    public function getPrimeiroDiaTemperatura(string $local): ?string
+    {
+        return $this->cache->remember("temp_primeiro_dia_{$local}", 86400, function () use ($local) {
+            $row = $this->db->rawQueryOne(
+                "SELECT DATE(MIN(created_at)) as dia FROM leituras_completas FORCE INDEX (idx_temp)
+                 WHERE local = ? AND temp > 0",
+                [$local]
+            );
+            return $row['dia'] ?? null;
+        });
+    }
+
+    /**
+     * Top 5 dias mais quentes / mais frios de um conjunto de dias do resumo diário,
+     * no formato que a view espera ('data' => 'd/m/Y H:i', 'valor' => '39.3', 'dia' => 'Y-m-d').
+     */
+    private function topTemperaturas(array $diaria): array
+    {
+        $formatar = function (array $lista, string $campoValor, string $campoHora): array {
+            $saida = [];
+            foreach (array_slice($lista, 0, 5, true) as $dia => $d) {
+                $saida[] = [
+                    'data' => date('d/m/Y', strtotime($dia)) . ' ' . $d[$campoHora],
+                    'valor' => number_format($d[$campoValor], 1),
+                    'dia' => $dia,
+                ];
+            }
+            return $saida;
+        };
+
+        $calor = $diaria;
+        uksort($calor, fn ($a, $b) => [$diaria[$b]['tmax'], $a] <=> [$diaria[$a]['tmax'], $b]);
+        $frio = $diaria;
+        uksort($frio, fn ($a, $b) => [$diaria[$a]['tmin'], $a] <=> [$diaria[$b]['tmin'], $b]);
+
+        return [
+            'calor' => $formatar($calor, 'tmax', 'hmax'),
+            'frio' => $formatar($frio, 'tmin', 'hmin'),
+        ];
+    }
+
+    /**
      * Busca estatísticas históricas de temperatura (Top Calor / Top Frio).
      */
     public function getEstatisticasTemperatura(string $local): array
     {
-        $cacheKey = "temp_estatisticas_daily_{$local}";
-        return $this->cache->remember($cacheKey, $this->getTtlHistorico(), function () use ($local) {
-
-            // Top 5 Dias Mais Quentes (Uma leitura por dia)
-            $topCalorRaw = $this->db->rawQuery(
-                "SELECT DATE(created_at) as dia, MAX(temp) as max_temp
-                 FROM leituras_completas
-                 WHERE local = ? AND temp > 0
-                 GROUP BY dia
-                 ORDER BY max_temp DESC
-                 LIMIT 5",
-                [$local]
-            );
-
-            // Busca o horário exato daquela máxima para cada dia (Top Calor)
-            $topCalor = [];
-            foreach ($topCalorRaw as $row) {
-                $diaStart = $row['dia'] . ' 00:00:00';
-                $diaEnd   = $row['dia'] . ' 23:59:59';
-                $item = $this->db->rawQueryOne(
-                    "SELECT created_at as data, temp / 10 as valor
-                     FROM leituras_completas
-                     WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp = ?
-                     LIMIT 1",
-                    [$local, $diaStart, $diaEnd, (int) $row['max_temp']]
-                );
-                if ($item)
-                    $topCalor[] = $item;
-            }
-
-            // Top 5 Dias Mais Frios (Uma leitura por dia)
-            $topFrioRaw = $this->db->rawQuery(
-                "SELECT DATE(created_at) as dia, MIN(temp) as min_temp
-                 FROM leituras_completas
-                 WHERE local = ? AND temp > 0
-                 GROUP BY dia
-                 ORDER BY min_temp ASC
-                 LIMIT 5",
-                [$local]
-            );
-
-            // Busca o horário exato daquela mínima para cada dia (Top Frio)
-            $topFrio = [];
-            foreach ($topFrioRaw as $row) {
-                $diaStart = $row['dia'] . ' 00:00:00';
-                $diaEnd   = $row['dia'] . ' 23:59:59';
-                $item = $this->db->rawQueryOne(
-                    "SELECT created_at as data, temp / 10 as valor
-                     FROM leituras_completas
-                     WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp = ?
-                     LIMIT 1",
-                    [$local, $diaStart, $diaEnd, (int) $row['min_temp']]
-                );
-                if ($item)
-                    $topFrio[] = $item;
-            }
-
-            return [
-                'calor' => array_map(function ($r) {
-                    $r['valor'] = number_format($r['valor'], 1);
-                    $r['data'] = date('d/m/Y H:i', strtotime($r['data']));
-                    return $r;
-                }, $topCalor),
-                'frio' => array_map(function ($r) {
-                    $r['valor'] = number_format($r['valor'], 1);
-                    $r['data'] = date('d/m/Y H:i', strtotime($r['data']));
-                    return $r;
-                }, $topFrio),
-            ];
-        });
+        $primeiro = $this->getPrimeiroDiaTemperatura($local);
+        if (!$primeiro) {
+            return ['calor' => [], 'frio' => []];
+        }
+        return $this->topTemperaturas($this->getTemperaturaDiaria($local, $primeiro, date('Y-m-d')));
     }
 
     /**
@@ -917,80 +946,7 @@ class LeituraModel
      */
     public function getEstatisticasTemperaturaAno(string $local, int $year): array
     {
-        $cacheKey = "temp_estatisticas_ano_{$local}_{$year}";
-        return $this->cache->remember($cacheKey, $this->getTtlHistorico(), function () use ($local, $year) {
-            $start = "{$year}-01-01 00:00:00";
-            $end   = "{$year}-12-31 23:59:59";
-
-            // Top 5 Dias Mais Quentes do Ano
-            $topCalorRaw = $this->db->rawQuery(
-                "SELECT DATE(created_at) as dia, MAX(temp) as max_temp
-                 FROM leituras_completas
-                 WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp > 0
-                 GROUP BY dia
-                 ORDER BY max_temp DESC
-                 LIMIT 5",
-                [$local, $start, $end]
-            );
-
-            $topCalor = [];
-            foreach ($topCalorRaw as $row) {
-                $diaStart = $row['dia'] . ' 00:00:00';
-                $diaEnd   = $row['dia'] . ' 23:59:59';
-                $item = $this->db->rawQueryOne(
-                    "SELECT created_at as data, temp / 10 as valor
-                     FROM leituras_completas
-                     WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp = ?
-                     LIMIT 1",
-                    [$local, $diaStart, $diaEnd, (int) $row['max_temp']]
-                );
-                if ($item) {
-                    $item['dia'] = $row['dia'];
-                    $topCalor[] = $item;
-                }
-            }
-
-            // Top 5 Dias Mais Frios do Ano
-            $topFrioRaw = $this->db->rawQuery(
-                "SELECT DATE(created_at) as dia, MIN(temp) as min_temp
-                 FROM leituras_completas
-                 WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp > 0
-                 GROUP BY dia
-                 ORDER BY min_temp ASC
-                 LIMIT 5",
-                [$local, $start, $end]
-            );
-
-            $topFrio = [];
-            foreach ($topFrioRaw as $row) {
-                $diaStart = $row['dia'] . ' 00:00:00';
-                $diaEnd   = $row['dia'] . ' 23:59:59';
-                $item = $this->db->rawQueryOne(
-                    "SELECT created_at as data, temp / 10 as valor
-                     FROM leituras_completas
-                     WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp = ?
-                     LIMIT 1",
-                    [$local, $diaStart, $diaEnd, (int) $row['min_temp']]
-                );
-                if ($item) {
-                    $item['dia'] = $row['dia'];
-                    $topFrio[] = $item;
-                }
-            }
-
-            return [
-                'calor' => array_map(function ($r) {
-                    $r['valor'] = number_format($r['valor'], 1);
-                    $r['data'] = date('d/m/Y H:i', strtotime($r['data']));
-                    return $r;
-                }, $topCalor),
-                'frio' => array_map(function ($r) {
-                    $r['valor'] = number_format($r['valor'], 1);
-                    $r['data'] = date('d/m/Y H:i', strtotime($r['data']));
-                    return $r;
-                }, $topFrio),
-            ];
-        });
+        return $this->topTemperaturas($this->getTemperaturaDiaria($local, "{$year}-01-01", "{$year}-12-31"));
     }
 
     /**
@@ -998,67 +954,25 @@ class LeituraModel
      */
     public function getTemperaturaResumo(string $local, int $year, mixed $month): array
     {
-        $cacheKey = "temp_resumo_{$local}_{$year}_{$month}";
-        return $this->cache->remember($cacheKey, $this->getTtlHistorico(), function () use ($local, $year, $month) {
+        if ($month !== 'all') {
+            $inicio = sprintf('%04d-%02d-01', $year, (int) $month);
+            $fim = date('Y-m-t', strtotime($inicio));
+        } else {
+            $inicio = "{$year}-01-01";
+            $fim = "{$year}-12-31";
+        }
 
-            if ($month !== 'all') {
-                $m = str_pad((string)$month, 2, '0', STR_PAD_LEFT);
-                $start = "{$year}-{$m}-01 00:00:00";
-                $end   = date('Y-m-t 23:59:59', strtotime($start));
-            } else {
-                $start = "{$year}-01-01 00:00:00";
-                $end   = "{$year}-12-31 23:59:59";
-            }
-
-            // Busca as máximas e mínimas diárias
-            $results = $this->db->rawQuery(
-                "SELECT 
-                    DATE(created_at) as data_dia,
-                    MIN(temp) / 10 as tmin,
-                    MAX(temp) / 10 as tmax
-                 FROM leituras_completas
-                 WHERE local = ? AND created_at >= ? AND created_at <= ?
-                 GROUP BY data_dia
-                 ORDER BY data_dia DESC",
-                [$local, $start, $end]
-            );
-
-            // Para cada dia, buscar a primeira ocorrência do horário da min e max
-            $final = [];
-            foreach ($results as $row) {
-                $dia = $row['data_dia'];
-                $diaStart = "{$dia} 00:00:00";
-                $diaEnd   = "{$dia} 23:59:59";
-
-                // Horário da Min (SQL escalado por 10)
-                $hMin = $this->db->rawQueryOne(
-                    "SELECT DATE_FORMAT(created_at, '%H:%i') as hora 
-                     FROM leituras_completas 
-                     WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp = ?
-                     LIMIT 1",
-                    [$local, $diaStart, $diaEnd, (int) round($row['tmin'] * 10)]
-                );
-
-                // Horário da Max
-                $hMax = $this->db->rawQueryOne(
-                    "SELECT DATE_FORMAT(created_at, '%H:%i') as hora 
-                     FROM leituras_completas 
-                     WHERE local = ? AND created_at >= ? AND created_at <= ? AND temp = ?
-                     LIMIT 1",
-                    [$local, $diaStart, $diaEnd, (int) round($row['tmax'] * 10)]
-                );
-
-                $final[] = [
-                    'data' => date('d/m/Y', strtotime($dia)),
-                    'temp_min' => number_format($row['tmin'], 1),
-                    'hora_min' => $hMin['hora'] ?? '--:--',
-                    'temp_max' => number_format($row['temp_max'] ?? $row['tmax'], 1),
-                    'hora_max' => $hMax['hora'] ?? '--:--',
-                ];
-            }
-
-            return $final;
-        });
+        $final = [];
+        foreach (array_reverse($this->getTemperaturaDiaria($local, $inicio, $fim), true) as $dia => $d) {
+            $final[] = [
+                'data' => date('d/m/Y', strtotime($dia)),
+                'temp_min' => number_format($d['tmin'], 1),
+                'hora_min' => $d['hmin'],
+                'temp_max' => number_format($d['tmax'], 1),
+                'hora_max' => $d['hmax'],
+            ];
+        }
+        return $final;
     }
 
     /**

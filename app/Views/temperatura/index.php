@@ -13,6 +13,9 @@
             <i class="bi bi-thermometer-half text-accent-warm"></i> Monitoramento de Temperatura
             <small class="text-muted ms-2" style="font-size: 0.75rem; font-weight: 400;">(Dados atualizados a cada 1h)</small>
         </h4>
+        <a href="<?= url('/inicio-temperatura/comparar') ?>?local=<?= urlencode($local) ?>" class="btn btn-sm btn-outline-primary rounded-pill px-3 mt-2">
+            <i class="bi bi-graph-up me-1"></i> Comparar meses e anos
+        </a>
     </div>
     <div class="col-md-6">
         <form action="<?= url('/inicio-temperatura') ?>" method="GET" class="row g-2 justify-content-md-end">
