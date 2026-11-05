@@ -19,6 +19,21 @@ function url(string $path): string {
     return $assetsBase . '/' . ltrim($path, '/');
 }
 
+/**
+ * URL de um arquivo estático (JS/CSS) com versão, ex.: /js/app.js?v=1793843753
+ *
+ * A versão é a data de modificação do arquivo, então muda sozinha sempre que o arquivo é atualizado:
+ * a Cloudflare e o navegador guardam o arquivo em cache (até 4h), mas um endereço novo força buscar
+ * a versão nova na hora. Para forçar TODOS os arquivos a serem baixados de novo, aumente
+ * 'assets_versao' no config.php (ex.: 1 → 2).
+ */
+function asset(string $path): string {
+    $arquivo = __DIR__ . '/' . ltrim($path, '/');
+    $versao = (string) (@filemtime($arquivo) ?: 0);
+    $bump = (string) ($GLOBALS['config']['assets_versao'] ?? '');
+    return url($path) . '?v=' . $versao . ($bump !== '' ? '-' . rawurlencode($bump) : '');
+}
+
 // Autoload do Composer
 $autoloadPath = __DIR__ . '/../vendor/autoload.php';
 if (!file_exists($autoloadPath)) {

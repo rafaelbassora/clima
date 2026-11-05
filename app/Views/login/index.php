@@ -6,7 +6,7 @@
     <title><?= $title ?? 'Login - Clima PB' ?></title>
     <link rel="shortcut icon" href="/img/logo.png" type="image/png">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-    <link rel="stylesheet" href="/css/app.css">
+    <link rel="stylesheet" href="<?= asset('/css/app.css') ?>">
     <style>
         body {
             background: var(--gradient-topbar);

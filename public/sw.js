@@ -1,11 +1,11 @@
 /*
  * Service worker do Clima Pereira Barreto (PWA).
  * - Páginas: rede primeiro (dados sempre atualizados); sem conexão, mostra a última versão salva ou a página offline.
- * - CSS/JS/imagens do site: responde do cache e atualiza em segundo plano.
+ * - CSS/JS/imagens do site: rede primeiro (sempre a versão nova); a cópia guardada só é usada sem internet.
  * - Bibliotecas de CDN (Bootstrap, ícones, Chart.js): cache primeiro (versões fixas).
  * - Área administrativa, login, painel do cidadão e API: nunca passam pelo cache.
  */
-const VERSAO = 'clima-v2';
+const VERSAO = 'clima-v3';
 const CACHE_ESTATICO = `${VERSAO}-estatico`;
 const CACHE_PAGINAS = `${VERSAO}-paginas`;
 const CACHE_CDN = `${VERSAO}-cdn`;
@@ -74,19 +74,22 @@ async function paginaRedePrimeiro(request) {
     }
 }
 
-async function estaticoCacheEAtualiza(request) {
-    // app.js e app.css usam ?v=... só pra furar cache do navegador; guarda sem a query
+async function estaticoRedePrimeiro(request) {
+    // rede primeiro: sempre a versão publicada mais recente (o ?v= muda a cada atualização do arquivo,
+    // e o cache do navegador cuida da velocidade); a cópia guardada só é usada sem internet.
+    // Guarda uma cópia por arquivo (sem o ?v=), pra não acumular versões antigas.
     const url = new URL(request.url);
     const chave = url.origin + url.pathname;
     const cache = await caches.open(CACHE_ESTATICO);
-    const salvo = await cache.match(chave);
-    const atualiza = fetch(request)
-        .then((resposta) => {
-            if (resposta.ok) cache.put(chave, resposta.clone());
-            return resposta;
-        })
-        .catch(() => salvo);
-    return salvo || atualiza;
+    try {
+        const resposta = await fetch(request);
+        if (resposta.ok) cache.put(chave, resposta.clone());
+        return resposta;
+    } catch (e) {
+        const salvo = await cache.match(chave);
+        if (salvo) return salvo;
+        throw e;
+    }
 }
 
 async function cdnCachePrimeiro(request) {
@@ -112,7 +115,7 @@ self.addEventListener('fetch', (event) => {
             return;
         }
         if (/^\/(css|js|img)\//.test(url.pathname) || url.pathname === '/manifest.webmanifest') {
-            event.respondWith(estaticoCacheEAtualiza(request));
+            event.respondWith(estaticoRedePrimeiro(request));
         }
         return;
     }

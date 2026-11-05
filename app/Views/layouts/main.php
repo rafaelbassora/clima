@@ -2,6 +2,7 @@
 // Detecta base path para assets
 $scriptName = $_SERVER['SCRIPT_NAME'] ?? '';
 $assetsBase = rtrim(dirname($scriptName), '/\\');
+// JS/CSS sempre via asset() (public/index.php): o endereço leva a versão do arquivo
 
 $appTitulo = $config['app']['titulo'] ?? $config['app_title'] ?? 'Clima';
 $appNomeCurto = $config['app']['nome_curto'] ?? 'Clima';
@@ -17,8 +18,11 @@ $parceiros = $config['parceiros'] ?? [];
 <html lang="pt-BR">
 <head>
     <!-- Google Analytics: só carrega depois do consentimento (ver /js/consentimento.js) -->
-    <script>window.CLIMA_GA_ID = <?= json_encode((string) ($config['ga_id'] ?? '')) ?>;</script>
-    <script src="<?= $assetsBase ?>/js/consentimento.js?v=1" defer></script>
+    <script>
+        window.CLIMA_GA_ID = <?= json_encode((string) ($config['ga_id'] ?? '')) ?>;
+        window.CLIMA_SW_URL = <?= json_encode(asset('/sw.js')) ?>;
+    </script>
+    <script src="<?= asset('/js/consentimento.js') ?>" defer></script>
 
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
@@ -50,7 +54,7 @@ $parceiros = $config['parceiros'] ?? [];
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <!-- App CSS -->
-    <link href="<?= $assetsBase ?>/css/app.css?v=<?= time() ?>" rel="stylesheet">
+    <link href="<?= asset('/css/app.css') ?>" rel="stylesheet">
 </head>
 <body>
 
@@ -224,7 +228,7 @@ $parceiros = $config['parceiros'] ?? [];
             basePath: '<?= $assetsBase ?>'
         };
     </script>
-    <script src="<?= $assetsBase ?>/js/app.js?v=<?= time() ?>"></script>
-    <script src="<?= $assetsBase ?>/js/pwa.js?v=2" defer></script>
+    <script src="<?= asset('/js/app.js') ?>"></script>
+    <script src="<?= asset('/js/pwa.js') ?>" defer></script>
 </body>
 </html>

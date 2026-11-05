@@ -9,7 +9,8 @@
 
     if ('serviceWorker' in navigator) {
         window.addEventListener('load', function () {
-            navigator.serviceWorker.register('/sw.js', { scope: '/' }).catch(function () { /* sem PWA, o site segue normal */ });
+            // endereço com versão (ex.: /sw.js?v=...), pra Cloudflare nunca entregar um service worker antigo
+            navigator.serviceWorker.register(window.CLIMA_SW_URL || '/sw.js', { scope: '/' }).catch(function () { /* sem PWA, o site segue normal */ });
         });
     }
 
