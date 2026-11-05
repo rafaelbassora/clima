@@ -37,17 +37,16 @@ $parceiros = $config['parceiros'] ?? [];
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
-    <title><?= htmlspecialchars($appTitulo) ?> - <?= htmlspecialchars($pageTitle ?? '') ?></title>
 
     <!-- SEO & Branding -->
     <link rel="icon" href="<?= htmlspecialchars($favicon) ?>" type="image/png">
     <link rel="shortcut icon" href="<?= htmlspecialchars($favicon) ?>" type="image/png">
     <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
-    <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
+    <meta name="description" content="<?= htmlspecialchars($metaDescricao ?? $metaDescription) ?>">
     <!-- prévia de link (WhatsApp/Facebook/X): páginas como a notícia podem trocar via $og* -->
     <meta property="og:title" content="<?= htmlspecialchars($ogTitulo ?? $appTitulo) ?>">
-    <meta property="og:description" content="<?= htmlspecialchars($ogDescricao ?? $metaDescription) ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($ogDescricao ?? $metaDescricao ?? $metaDescription) ?>">
     <meta property="og:image" content="<?= htmlspecialchars($ogImagem ?? ('https://' . $appDominio . $favicon)) ?>">
     <meta property="og:url" content="<?= htmlspecialchars($ogUrl ?? ('https://' . $appDominio . '/')) ?>">
     <meta property="og:type" content="<?= htmlspecialchars($ogTipo ?? 'website') ?>">
@@ -56,6 +55,9 @@ $parceiros = $config['parceiros'] ?? [];
     <meta name="twitter:card" content="<?= !empty($ogImagem) ? 'summary_large_image' : 'summary' ?>">
 <?php if (!empty($ogUrl)): ?>
     <link rel="canonical" href="<?= htmlspecialchars($ogUrl) ?>">
+<?php endif; ?>
+<?php if (!empty($jsonLd)): /* dados estruturados (schema.org) para o Google */ ?>
+    <script type="application/ld+json"><?= json_encode($jsonLd, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP) ?></script>
 <?php endif; ?>
 
     <meta name="theme-color" content="#0f1923">
@@ -149,6 +151,8 @@ $parceiros = $config['parceiros'] ?? [];
                 ['url' => url('/inicio-vento') . '?local=1&year=' . date('Y') . '&month=' . date('m'),   'icon' => 'bi-wind',                'label' => 'Ventos',               'id' => 'vento'],
                 ['url' => url('/inicio-temperatura') . '?local=1&year=' . date('Y') . '&month=' . date('m'), 'icon' => 'bi-thermometer-half',      'label' => 'Temperatura',          'id' => 'temperatura'],
                 ['url' => url('/previsao-do-tempo') . '?local=1',                   'icon' => 'bi-umbrella-fill',        'label' => 'Previsão do Tempo',    'id' => 'previsao'],
+                ['url' => url('/nascer-e-por-do-sol'),                              'icon' => 'bi-sunrise-fill',         'label' => 'Nascer e Pôr do Sol',  'id' => 'sol'],
+                ['url' => url('/fases-da-lua'),                                     'icon' => 'bi-moon-stars-fill',      'label' => 'Fases da Lua',         'id' => 'lua'],
                 ['url' => url('/noticias'),                                      'icon' => 'bi-newspaper',            'label' => 'Notícias',             'id' => 'noticias'],
                 ['url' => url('/termos'),                                        'icon' => 'bi-file-earmark-text-fill', 'label' => 'Termos de Uso',    'id' => 'termos'],
                 ['url' => url('/privacidade'),                                   'icon' => 'bi-shield-check',          'label' => 'Privacidade',      'id' => 'privacidade'],

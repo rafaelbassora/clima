@@ -1,0 +1,12 @@
+User-agent: *
+Disallow: /admin
+Disallow: /login
+Disallow: /pluviometro-cidadao/painel
+Disallow: /pluviometro-cidadao/login
+Disallow: /pluviometro-cidadao/cadastro
+Disallow: /pluviometro-cidadao/esqueci-senha
+Disallow: /pluviometro-cidadao/redefinir-senha
+Disallow: /pluviometro-cidadao/confirmar-email
+Disallow: /api/
+
+Sitemap: https://clima.pereirabarreto.sp.gov.br/sitemap.xml

@@ -875,3 +875,56 @@ html.a11y-contraste body .btn-close.btn-close:not([vw]):not([vw] *):not(img):not
 .forecast-astro .lua-emoji { display: inline-block; font-size: 1rem; line-height: 1; }
 /* os emojis da lua mostram o céu do hemisfério norte; no sul o lado iluminado é o oposto */
 .forecast-astro .lua-sul { transform: scaleX(-1); }
+
+/* links do sol/lua no "Previsão hoje" e no card de hoje */
+.forecast-astro a { color: inherit; text-decoration: none; }
+.forecast-astro a:hover { color: var(--bs-primary, #0d6efd); text-decoration: underline; }
+
+/* ---------- Páginas de astronomia (/fases-da-lua, /nascer-e-por-do-sol) ---------- */
+.breadcrumb-astro { font-size: 0.875rem; }
+.breadcrumb-astro a { color: var(--text-muted, #6c757d); text-decoration: none; }
+.breadcrumb-astro a:hover { text-decoration: underline; }
+.lua-emoji { display: inline-block; line-height: 1; }
+.lua-sul { transform: scaleX(-1); }
+.astro-lua-grande { font-size: 5.5rem; line-height: 1; }
+.astro-proximas li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid rgba(0,0,0,.06); }
+.astro-proximas li:last-child { border-bottom: 0; }
+.astro-proximas .lua-emoji { font-size: 1.8rem; }
+.astro-pesca { display: inline-block; padding: 6px 14px; border-radius: 999px; font-size: 0.9rem; }
+.astro-pesca.astro-pesca-4 { background: rgba(25,135,84,.12); color: #146c43; }
+.astro-pesca.astro-pesca-3 { background: rgba(13,110,253,.10); color: #0a58ca; }
+.astro-pesca.astro-pesca-2 { background: rgba(255,193,7,.18); color: #8a6100; }
+.astro-pesca.astro-pesca-1 { background: rgba(108,117,125,.15); color: #495057; }
+.astro-pesca-ponto { display: inline-block; width: 8px; height: 8px; border-radius: 50%; vertical-align: middle; }
+.astro-pesca-ponto.astro-pesca-4 { background: #198754; }
+.astro-pesca-ponto.astro-pesca-3 { background: #0d6efd; }
+.astro-pesca-ponto.astro-pesca-2 { background: #ffc107; }
+.astro-pesca-ponto.astro-pesca-1 { background: #adb5bd; }
+.astro-calendario { display: flex; flex-direction: column; gap: 4px; }
+.astro-cal-linha { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.astro-cal-semana { text-align: center; font-size: 0.75rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted, #6c757d); padding: 4px 0; }
+.astro-cal-dia {
+    position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px;
+    padding: 6px 2px 8px; border-radius: 10px; background: rgba(0,0,0,.025); min-width: 0; text-align: center;
+}
+.astro-cal-dia.vazio { background: transparent; }
+.astro-cal-dia.principal { background: rgba(13,110,253,.08); }
+.astro-cal-dia.hoje { outline: 2px solid var(--bs-primary, #0d6efd); }
+.astro-cal-num { align-self: flex-start; padding-left: 6px; font-size: 0.75rem; font-weight: 700; color: var(--text-muted, #6c757d); }
+.astro-cal-dia .lua-emoji { font-size: 1.6rem; }
+.astro-cal-nome { font-size: 0.7rem; line-height: 1.15; color: var(--text-dark, #212529); overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.astro-cal-dia:not(.principal) .astro-cal-nome { color: var(--text-muted, #6c757d); }
+.astro-cal-info { font-size: 0.7rem; color: var(--text-muted, #6c757d); }
+.astro-cal-dia.principal .astro-cal-info { font-weight: 700; color: var(--bs-primary, #0d6efd); }
+.astro-cal-dia .astro-pesca-ponto { position: absolute; top: 8px; right: 8px; }
+.astro-tabela th, .astro-tabela td { white-space: nowrap; }
+.astro-sol-hoje .bi { font-size: 1.8rem; }
+.astro-sol-hora { font-size: 1.6rem; font-weight: 700; }
+.astro-texto p { line-height: 1.7; }
+@media (max-width: 576px) {
+    .astro-cal-nome { display: none; }
+    .astro-cal-dia .lua-emoji { font-size: 1.3rem; }
+    .astro-cal-dia .astro-pesca-ponto { top: 6px; right: 5px; width: 6px; height: 6px; }
+    .astro-cal-num { padding-left: 3px; }
+    .astro-lua-grande { font-size: 4.5rem; }
+}

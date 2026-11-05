@@ -102,6 +102,9 @@ $router->get('/noticias',            'NoticiaController',     'index');
 $router->get('/noticias/view',       'NoticiaController',     'show');
 $router->get('/sobre-nos',          'SobreController',        'index');
 $router->get('/previsao-do-tempo',  'PrevisaoController',     'index');
+$router->get('/fases-da-lua',        'AstronomiaController',   'lua');
+$router->get('/nascer-e-por-do-sol', 'AstronomiaController',   'sol');
+$router->get('/sitemap.xml',         'SitemapController',      'index');
 
 // Pluviômetro Cidadão (público)
 $router->get('/pluviometro-cidadao',                        'CidadaoController', 'index');

@@ -49,13 +49,13 @@ $localNome = match($local) {
         ?>
         <div class="forecast-astro">
             <?php if ($solHoje['nascer'] && $solHoje['por']): ?>
-                <span title="Nascer do sol"><i class="bi bi-sunrise" aria-hidden="true"></i> <span class="visually-hidden">Nascer do sol:</span> <?= date('H:i', $solHoje['nascer']) ?></span>
-                <span title="Pôr do sol"><i class="bi bi-sunset" aria-hidden="true"></i> <span class="visually-hidden">Pôr do sol:</span> <?= date('H:i', $solHoje['por']) ?></span>
+                <a href="/nascer-e-por-do-sol" title="Nascer do sol — ver horários do mês"><i class="bi bi-sunrise" aria-hidden="true"></i> <span class="visually-hidden">Nascer do sol:</span> <?= date('H:i', $solHoje['nascer']) ?></a>
+                <a href="/nascer-e-por-do-sol" title="Pôr do sol — ver horários do mês"><i class="bi bi-sunset" aria-hidden="true"></i> <span class="visually-hidden">Pôr do sol:</span> <?= date('H:i', $solHoje['por']) ?></a>
             <?php endif; ?>
-            <span title="Fase da lua: <?= htmlspecialchars($luaHoje['nome']) ?>, <?= $luaHoje['iluminacao'] ?>% iluminada">
+            <a href="/fases-da-lua" title="Fase da lua: <?= htmlspecialchars($luaHoje['nome']) ?>, <?= $luaHoje['iluminacao'] ?>% iluminada — ver calendário lunar">
                 <span class="lua-emoji<?= \App\Services\AstronomiaService::hemisferioSul() ? ' lua-sul' : '' ?>" aria-hidden="true"><?= $luaHoje['emoji'] ?></span>
                 <?= htmlspecialchars($luaHoje['nome']) ?> <span class="text-muted">· <?= $luaHoje['iluminacao'] ?>%</span>
-            </span>
+            </a>
         </div>
         <a href="/previsao-do-tempo?local=<?= htmlspecialchars($local) ?>" class="badge-link">
             Previsão 7 dias <i class="bi bi-arrow-right"></i>
