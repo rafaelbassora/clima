@@ -16,6 +16,7 @@ use App\Services\TotpService;
 use App\Services\MailerService;
 use App\Services\WundergroundService;
 use App\Services\ExportacaoService;
+use App\Services\BackupBancoService;
 use App\Services\NoticiaAutomaticaService;
 
 class AdminController extends Controller
@@ -955,5 +956,258 @@ class AdminController extends Controller
             'filtros' => $service->descreverFiltros($p),
             'arquivo' => $service->nomeArquivo($p),
         ], JSON_UNESCAPED_UNICODE);
+    }
+
+    // ------------------------------------------------------------------
+    // Backup do banco — só administradores, com a senha confirmada
+    // O arquivo fica em C:/backupclima (fora do Apache); senhas e segredos saem vazios.
+    // ------------------------------------------------------------------
+
+    private const BACKUP_CONFIRMACAO_SEG = 900;   // senha confirmada vale 15 min
+    private const BACKUP_MAX_FALHAS = 5;          // tentativas de senha a cada 15 min
+
+    private function backupPasta(): string
+    {
+        return BackupBancoService::pasta($this->config);
+    }
+
+    private function backupConfirmado(): bool
+    {
+        return !empty($_SESSION['backup_ok_ate']) && $_SESSION['backup_ok_ate'] > time()
+            && ($_SESSION['backup_ok_usuario'] ?? null) === ($_SESSION['usuario_id'] ?? 'x');
+    }
+
+    private function backupTokenOk(): bool
+    {
+        return !empty($_POST['token']) && !empty($_SESSION['csrf_backup'])
+            && hash_equals($_SESSION['csrf_backup'], (string) $_POST['token']);
+    }
+
+    private function backupQuem(): string
+    {
+        $ip = $_SERVER['HTTP_CF_CONNECTING_IP'] ?? $_SERVER['REMOTE_ADDR'] ?? '?';
+        return ($_SESSION['usuario'] ?? '?') . ' (id ' . ($_SESSION['usuario_id'] ?? '?') . ') de ' . $ip;
+    }
+
+    private function backupVoltar(?string $msg = null, string $tipo = 'erro'): void
+    {
+        if ($msg !== null) {
+            $_SESSION['backup_msg'] = [$tipo, $msg];
+        }
+        header('Location: /admin/backup');
+    }
+
+    /** Admin e token válidos? (senão já respondeu) */
+    private function backupPodeAgir(bool $exigeConfirmacao = true): bool
+    {
+        if (!$this->ehAdmin()) {
+            http_response_code(403);
+            echo 'Acesso restrito a administradores.';
+            return false;
+        }
+        if (!$this->backupTokenOk()) {
+            $this->backupVoltar('Sessão expirada. Recarregue a página e tente de novo.');
+            return false;
+        }
+        if ($exigeConfirmacao && !$this->backupConfirmado()) {
+            $this->backupVoltar('Confirme sua senha para continuar.');
+            return false;
+        }
+        return true;
+    }
+
+    /** GET /admin/backup */
+    public function backup(): void
+    {
+        if (!$this->ehAdmin()) {
+            $this->view('admin/backup/index', ['activeMenu' => 'backup', 'title' => 'Backup do Banco', 'semPermissao' => true], 'admin');
+            return;
+        }
+        if (empty($_SESSION['csrf_backup'])) {
+            $_SESSION['csrf_backup'] = bin2hex(random_bytes(32));
+        }
+        $pasta = $this->backupPasta();
+        $erroPasta = null;
+        try {
+            BackupBancoService::garantirPasta($pasta);
+        } catch (\Throwable $e) {
+            $erroPasta = $e->getMessage();
+        }
+        $usuario = $this->userModel->getById((int) ($_SESSION['usuario_id'] ?? 0));
+        $msg = $_SESSION['backup_msg'] ?? null;
+        unset($_SESSION['backup_msg']);
+
+        $tabelas = [];
+        try {
+            $tabelas = $GLOBALS['cache']->remember('backup_tabelas_v1', 600, fn () => (new BackupBancoService($this->db))->tabelas());
+        } catch (\Throwable $e) {
+        }
+
+        $this->view('admin/backup/index', [
+            'activeMenu' => 'backup',
+            'title' => 'Backup do Banco',
+            'semPermissao' => false,
+            'token' => $_SESSION['csrf_backup'],
+            'confirmado' => $this->backupConfirmado(),
+            'confirmadoAte' => (int) ($_SESSION['backup_ok_ate'] ?? 0),
+            'exige2fa' => !empty($usuario['totp_enabled']) && !empty($usuario['totp_secret']),
+            'pasta' => $pasta,
+            'erroPasta' => $erroPasta,
+            'arquivos' => $erroPasta ? [] : BackupBancoService::arquivos($pasta),
+            'status' => $erroPasta ? null : BackupBancoService::lerStatus($pasta),
+            'emAndamento' => $erroPasta ? false : BackupBancoService::emAndamento($pasta),
+            'logs' => $erroPasta ? [] : BackupBancoService::ultimosLogs($pasta),
+            'tabelas' => $tabelas,
+            'msg' => $msg,
+        ], 'admin');
+    }
+
+    /** POST /admin/backup/confirmar — senha (e 2FA) do próprio usuário */
+    public function backupConfirmar(): void
+    {
+        if (!$this->backupPodeAgir(false)) {
+            return;
+        }
+        $uid = (int) ($_SESSION['usuario_id'] ?? 0);
+        $chaveFalhas = 'backup_falhas_' . $uid;
+        $falhas = (int) ($GLOBALS['cache']->get($chaveFalhas) ?? 0);
+        if ($falhas >= self::BACKUP_MAX_FALHAS) {
+            BackupBancoService::registrarLog($this->backupPasta(), 'BLOQUEADO excesso de tentativas | ' . $this->backupQuem());
+            $this->backupVoltar('Muitas tentativas erradas. Aguarde 15 minutos.');
+            return;
+        }
+
+        $usuario = $this->userModel->getById($uid);
+        $ok = $usuario && password_verify((string) ($_POST['senha'] ?? ''), (string) $usuario['password']);
+        if ($ok && !empty($usuario['totp_enabled']) && !empty($usuario['totp_secret'])) {
+            $ok = (new TotpService())->verifyCode($usuario['totp_secret'], preg_replace('/\D/', '', (string) ($_POST['codigo'] ?? '')));
+        }
+
+        if (!$ok) {
+            $GLOBALS['cache']->set($chaveFalhas, $falhas + 1, 900);
+            BackupBancoService::registrarLog($this->backupPasta(), 'SENHA INCORRETA | ' . $this->backupQuem());
+            $this->backupVoltar('Senha ou código incorreto.');
+            return;
+        }
+
+        $GLOBALS['cache']->delete($chaveFalhas);
+        session_regenerate_id(true);
+        $_SESSION['backup_ok_ate'] = time() + self::BACKUP_CONFIRMACAO_SEG;
+        $_SESSION['backup_ok_usuario'] = $_SESSION['usuario_id'] ?? null;
+        $this->backupVoltar('Senha confirmada. As ações de backup ficam liberadas por 15 minutos.', 'ok');
+    }
+
+    /** POST /admin/backup/gerar — dispara o backup em segundo plano */
+    public function backupGerar(): void
+    {
+        if (!$this->backupPodeAgir()) {
+            return;
+        }
+        $pasta = $this->backupPasta();
+        try {
+            BackupBancoService::garantirPasta($pasta);
+        } catch (\Throwable $e) {
+            $this->backupVoltar($e->getMessage());
+            return;
+        }
+        if (BackupBancoService::emAndamento($pasta)) {
+            $this->backupVoltar('Já existe um backup sendo gerado. Aguarde terminar.');
+            return;
+        }
+
+        $modo = ($_POST['modo'] ?? 'completo') === 'leve' ? 'leve' : 'completo';
+        $anonimizar = !empty($_POST['anonimizar']) ? '1' : '0';
+        $uid = (int) ($_SESSION['usuario_id'] ?? 0);
+
+        $php = (string) ($this->config['backup']['php'] ?? 'C:/php/php.exe');
+        $script = realpath(__DIR__ . '/../../cron/backup-banco.php');
+        if (!is_file($php) || !$script) {
+            $this->backupVoltar('Não encontrei o PHP de linha de comando para gerar o backup.');
+            return;
+        }
+
+        // marca "na fila" já, pra tela mostrar o andamento desde o primeiro segundo
+        BackupBancoService::gravarStatus($pasta, ['estado' => 'iniciando', 'inicio' => time(), 'modo' => $modo === 'leve' ? 'sem histórico' : 'completo']);
+        BackupBancoService::registrarLog($pasta, "PEDIDO de backup ({$modo}" . ($anonimizar === '1' ? ', anonimizado' : '') . ') | ' . $this->backupQuem());
+
+        // roda solto do Apache (o Cloudflare corta pedidos com mais de 100 s); argumentos são fixos/validados
+        $args = '--modo=' . $modo . ' --anonimizar=' . $anonimizar . ' --usuario=' . $uid;
+        if (DIRECTORY_SEPARATOR === '\\') {
+            pclose(popen('start "" /B "' . $php . '" "' . $script . '" ' . $args . ' >NUL 2>&1', 'r'));
+        } else {
+            exec(escapeshellarg($php) . ' ' . escapeshellarg($script) . ' ' . $args . ' > /dev/null 2>&1 &');
+        }
+        $this->backupVoltar('Backup iniciado. Acompanhe o andamento abaixo.', 'ok');
+    }
+
+    /** GET /admin/backup/status — andamento (JSON, para a tela atualizar sozinha) */
+    public function backupStatus(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Cache-Control: no-store');
+        if (!$this->ehAdmin()) {
+            http_response_code(403);
+            echo json_encode(['erro' => 'Acesso restrito.']);
+            return;
+        }
+        session_write_close();
+        $pasta = $this->backupPasta();
+        echo json_encode([
+            'status' => BackupBancoService::lerStatus($pasta),
+            'emAndamento' => BackupBancoService::emAndamento($pasta),
+        ], JSON_UNESCAPED_UNICODE);
+    }
+
+    /** POST /admin/backup/baixar — envia o arquivo (lido de fora do Apache) */
+    public function backupBaixar(): void
+    {
+        if (!$this->backupPodeAgir()) {
+            return;
+        }
+        $pasta = $this->backupPasta();
+        $caminho = BackupBancoService::caminhoSeguro($pasta, (string) ($_POST['arquivo'] ?? ''));
+        if (!$caminho) {
+            $this->backupVoltar('Arquivo de backup não encontrado.');
+            return;
+        }
+        BackupBancoService::registrarLog($pasta, 'DOWNLOAD ' . basename($caminho) . ' | ' . $this->backupQuem());
+
+        session_write_close();
+        @set_time_limit(0);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+        header('Content-Type: application/gzip');
+        header('Content-Disposition: attachment; filename="' . basename($caminho) . '"');
+        header('Content-Length: ' . filesize($caminho));
+        header('Cache-Control: no-store, private');
+        header('X-Content-Type-Options: nosniff');
+        $h = fopen($caminho, 'rb');
+        while (!feof($h)) {
+            echo fread($h, 1048576);
+            flush();
+        }
+        fclose($h);
+        exit;
+    }
+
+    /** POST /admin/backup/apagar */
+    public function backupApagar(): void
+    {
+        if (!$this->backupPodeAgir()) {
+            return;
+        }
+        $pasta = $this->backupPasta();
+        if (BackupBancoService::emAndamento($pasta)) {
+            $this->backupVoltar('Espere o backup em andamento terminar.');
+            return;
+        }
+        $caminho = BackupBancoService::caminhoSeguro($pasta, (string) ($_POST['arquivo'] ?? ''));
+        if ($caminho && @unlink($caminho)) {
+            BackupBancoService::registrarLog($pasta, 'APAGADO ' . basename($caminho) . ' | ' . $this->backupQuem());
+            $this->backupVoltar('Backup apagado do servidor.', 'ok');
+            return;
+        }
+        $this->backupVoltar('Não foi possível apagar o arquivo.');
     }
 }

@@ -18,6 +18,7 @@ $menuItems = [
 if (!empty($_SESSION['is_admin'])) {
     array_splice($menuItems, count($menuItems) - 2, 0, [
         ['url' => '/admin/exportar',    'icon' => 'bi-download',              'label' => 'Exportar Dados', 'id' => 'exportar'],
+        ['url' => '/admin/backup',      'icon' => 'bi-database-lock',         'label' => 'Backup do Banco', 'id' => 'backup'],
     ]);
 }
 ?>

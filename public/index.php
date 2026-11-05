@@ -200,6 +200,12 @@ $router->get('/admin/cidadao/rejeitar', 'AdminController', 'cidadaoRejeitar');
 $router->get('/admin/exportar',         'AdminController', 'exportar');
 $router->post('/admin/exportar/baixar', 'AdminController', 'exportarBaixar');
 $router->get('/admin/exportar/contar',  'AdminController', 'exportarContar');
+$router->get('/admin/backup',            'AdminController', 'backup');
+$router->post('/admin/backup/confirmar', 'AdminController', 'backupConfirmar');
+$router->post('/admin/backup/gerar',     'AdminController', 'backupGerar');
+$router->get('/admin/backup/status',     'AdminController', 'backupStatus');
+$router->post('/admin/backup/baixar',    'AdminController', 'backupBaixar');
+$router->post('/admin/backup/apagar',    'AdminController', 'backupApagar');
 
 // API (AJAX)
 $router->get('/api/clima-atual',      'ApiController',         'climaAtual');
