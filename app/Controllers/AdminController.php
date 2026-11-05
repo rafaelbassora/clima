@@ -758,14 +758,25 @@ class AdminController extends Controller
         $configModel = new EstacaoConfigModel();
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $fonte = $_POST['fonte_dados'] === 'wunderground' ? 'wunderground' : 'spoofing';
-            $apiKey = trim($_POST['wunderground_api_key'] ?? '');
+            $fonte = ($_POST['fonte_dados'] ?? '') === 'wunderground' ? 'wunderground' : 'spoofing';
             $stationId = trim($_POST['wunderground_station_id'] ?? '');
             $frequencia = max(1, (int) ($_POST['frequencia_minutos'] ?? 5));
 
+            // A chave nunca volta pro navegador: o campo vem vazio. Vazio = mantém a chave salva;
+            // só troca se digitarem uma nova, e só apaga marcando "remover chave salva".
+            $chaveAtual = (string) ($configModel->getConfig()['wunderground_api_key'] ?? '');
+            $chaveDigitada = trim($_POST['wunderground_api_key'] ?? '');
+            if (!empty($_POST['remover_api_key'])) {
+                $apiKey = '';
+            } elseif ($chaveDigitada !== '') {
+                $apiKey = $chaveDigitada;
+            } else {
+                $apiKey = $chaveAtual;
+            }
+
             $erro = null;
             if ($fonte === 'wunderground' && ($apiKey === '' || $stationId === '')) {
-                $erro = 'Pra usar a fonte Wunderground, preencha a API Key e o Station ID.';
+                $erro = 'Pra usar a fonte Wunderground, informe a API Key e o Station ID.';
             }
 
             if (!$erro) {

@@ -52,9 +52,29 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
                     </div>
                 </div>
 
+                <?php
+                // a chave nunca é enviada pro navegador: só os 4 últimos caracteres, pra identificar qual está salva
+                $chaveSalva = (string) ($estacaoConfig['wunderground_api_key'] ?? '');
+                $temChave = $chaveSalva !== '';
+                $finalChave = $temChave ? mb_substr($chaveSalva, -4) : '';
+                ?>
                 <div class="col-md-6">
-                    <label class="form-label small fw-bold">Wunderground API Key</label>
-                    <input type="text" name="wunderground_api_key" class="form-control" value="<?= htmlspecialchars($estacaoConfig['wunderground_api_key'] ?? '') ?>" placeholder="Gerada em wunderground.com/member/api-keys">
+                    <label class="form-label small fw-bold" for="wuApiKey">Wunderground API Key</label>
+                    <input type="password" id="wuApiKey" name="wunderground_api_key" class="form-control" value=""
+                           autocomplete="new-password" spellcheck="false"
+                           placeholder="<?= $temChave ? '•••••••••••• (deixe em branco para manter a atual)' : 'Gerada em wunderground.com/member/api-keys' ?>">
+                    <?php if ($temChave): ?>
+                        <div class="form-text small">
+                            <i class="bi bi-shield-lock me-1"></i>Chave salva, termina em <code>…<?= htmlspecialchars($finalChave) ?></code>.
+                            Para trocar, digite a nova; em branco, a atual é mantida.
+                        </div>
+                        <div class="form-check mt-1">
+                            <input class="form-check-input" type="checkbox" name="remover_api_key" value="1" id="removerApiKey">
+                            <label class="form-check-label small" for="removerApiKey">Remover chave salva</label>
+                        </div>
+                    <?php else: ?>
+                        <div class="form-text small">Nenhuma chave salva.</div>
+                    <?php endif; ?>
                 </div>
                 <div class="col-md-6">
                     <label class="form-label small fw-bold">Station ID</label>
