@@ -7,7 +7,43 @@ document.addEventListener('DOMContentLoaded', () => {
     initClock();
     initAjaxRefresh();
     initTooltips();
+    initVoltarAoTopo();
 });
+
+/**
+ * Botão "voltar ao topo": aparece só em páginas longas, depois de rolar um pouco.
+ */
+function initVoltarAoTopo() {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.id = 'voltar-topo';
+    btn.setAttribute('aria-label', 'Voltar ao topo da página');
+    btn.title = 'Voltar ao topo';
+    btn.innerHTML = '<i class="bi bi-arrow-up" aria-hidden="true"></i>';
+    document.body.appendChild(btn);
+
+    const semAnimacao = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    btn.addEventListener('click', () => {
+        window.scrollTo({ top: 0, behavior: semAnimacao ? 'auto' : 'smooth' });
+        // devolve o foco pro começo da página (quem navega pelo teclado não fica "perdido" lá embaixo)
+        const alvo = document.querySelector('main, h1, h2, h3, h4') || document.body;
+        if (!alvo.hasAttribute('tabindex')) alvo.setAttribute('tabindex', '-1');
+        alvo.focus({ preventScroll: true });
+    });
+
+    let agendado = false;
+    const atualizar = () => {
+        agendado = false;
+        // só em páginas com pelo menos ~2 telas de altura, e depois de rolar mais de uma tela
+        const longa = document.documentElement.scrollHeight > window.innerHeight * 2;
+        btn.classList.toggle('visivel', longa && window.scrollY > window.innerHeight * 0.8);
+    };
+    window.addEventListener('scroll', () => {
+        if (!agendado) { agendado = true; requestAnimationFrame(atualizar); }
+    }, { passive: true });
+    window.addEventListener('resize', atualizar, { passive: true });
+    atualizar();
+}
 
 /**
  * Inicializa os tooltips do Bootstrap

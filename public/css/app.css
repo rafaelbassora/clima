@@ -709,3 +709,44 @@ body {
 .weather-card:nth-child(2) { animation-delay: 0.1s; }
 .weather-card:nth-child(3) { animation-delay: 0.15s; }
 .weather-card:nth-child(4) { animation-delay: 0.2s; }
+
+/* ---------- Botão "voltar ao topo" ---------- */
+#voltar-topo {
+    position: fixed;
+    right: 20px;
+    bottom: 20px;
+    z-index: 1070; /* abaixo dos avisos de cookies (1090) e de instalar o app (1080) */
+    width: 48px;
+    height: 48px;
+    border: 0;
+    border-radius: 50%;
+    background: var(--primary);
+    color: #fff;
+    font-size: 1.35rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--shadow-md);
+    cursor: pointer;
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(12px);
+    transition: opacity .25s ease, transform .25s ease, visibility .25s, background .2s;
+}
+#voltar-topo.visivel {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+#voltar-topo:hover { background: var(--primary-dark); }
+#voltar-topo:focus-visible { outline: 3px solid #9ec5fe; outline-offset: 3px; }
+@media (max-width: 575.98px) {
+    #voltar-topo { right: 14px; bottom: 14px; width: 44px; height: 44px; }
+}
+@media (prefers-reduced-motion: reduce) {
+    #voltar-topo { transition: none; }
+}
+@media print {
+    #voltar-topo { display: none !important; }
+}
