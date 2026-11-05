@@ -62,6 +62,22 @@
                             </div>
                         </div>
 
+                        <?php if ($isToday):
+                            $solHoje = \App\Services\AstronomiaService::sol();
+                            $luaHoje = \App\Services\AstronomiaService::lua();
+                        ?>
+                        <div class="forecast-astro justify-content-center border-top border-secondary border-opacity-10 pt-2 mt-2 mb-0">
+                            <?php if ($solHoje['nascer'] && $solHoje['por']): ?>
+                                <span title="Nascer do sol"><i class="bi bi-sunrise" aria-hidden="true"></i> <span class="visually-hidden">Nascer do sol:</span> <?= date('H:i', $solHoje['nascer']) ?></span>
+                                <span title="Pôr do sol"><i class="bi bi-sunset" aria-hidden="true"></i> <span class="visually-hidden">Pôr do sol:</span> <?= date('H:i', $solHoje['por']) ?></span>
+                            <?php endif; ?>
+                            <span title="Fase da lua: <?= htmlspecialchars($luaHoje['nome']) ?>, <?= $luaHoje['iluminacao'] ?>% iluminada">
+                                <span class="lua-emoji<?= \App\Services\AstronomiaService::hemisferioSul() ? ' lua-sul' : '' ?>" aria-hidden="true"><?= $luaHoje['emoji'] ?></span>
+                                <?= htmlspecialchars($luaHoje['nome']) ?> <span class="text-muted">· <?= $luaHoje['iluminacao'] ?>%</span>
+                            </span>
+                        </div>
+                        <?php endif; ?>
+
                         <?php if ($p['iuv'] > 0): ?>
                         <div class="badge <?= $p['iuv'] > 5 ? 'bg-danger' : 'bg-success' ?> bg-opacity-10 <?= $p['iuv'] > 5 ? 'text-danger' : 'text-success' ?> w-100 py-2 mt-2">
                             Índice UV: <?= $p['iuv'] ?>
