@@ -76,6 +76,7 @@
 
             <?php if ($temAuto): ?>
             <!-- Tab Automática (Primeira) -->
+            <div class="tab-pane fade show active p-4" id="auto-content" role="tabpanel">
                 <div class="d-flex justify-content-between align-items-center mb-4">
                     <div>
                         <h5 class="mb-0 text-white-50"><?= $month === 'all' ? 'Resumo Anual' : 'Resumo Mensal' ?> (Automático)</h5>
