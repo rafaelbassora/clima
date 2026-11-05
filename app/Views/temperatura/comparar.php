@@ -95,7 +95,12 @@ $limiteTxt = $fmt($limiteCalor);
 
 <?php
 // Card de resumo (usado nos dois modos)
-$card = function (string $titulo, ?array $r, string $cor, bool $parcial, ?array $media = null) use ($fmt, $limiteTxt) {
+$card = function (string $titulo, ?array $r, string $cor, bool $parcial, ?array $geral = null) use ($fmt, $limiteTxt) {
+    $dif = function (float $v, float $ref) use ($fmt) {
+        $d = $v - $ref;
+        $classe = abs($d) < 0.05 ? 'text-muted' : ($d > 0 ? 'text-danger' : 'text-primary');
+        return '<span class="fw-bold ' . $classe . '">(' . ($d > 0 ? '+' : '') . $fmt($d) . '°)</span>';
+    };
     ?>
     <div class="weather-card h-100 p-3" style="border-top: 4px solid <?= $cor ?>;">
         <div class="small text-muted fw-bold">
@@ -109,14 +114,11 @@ $card = function (string $titulo, ?array $r, string $cor, bool $parcial, ?array 
                 <div><span class="fs-4 fw-bold text-accent-warm"><?= $fmt($r['media_max']) ?>°</span> <small class="text-muted">máx. média</small></div>
                 <div><span class="fs-4 fw-bold text-primary"><?= $fmt($r['media_min']) ?>°</span> <small class="text-muted">mín. média</small></div>
             </div>
-            <?php if ($media): ?>
-                <?php $dif = $r['media_max'] - $media['max']; ?>
-                <div class="small text-muted">
-                    Máx. média histórica: <?= $fmt($media['max']) ?>°
-                    <?php if (!$parcial): ?>
-                        <span class="fw-bold <?= $dif >= 0 ? 'text-danger' : 'text-primary' ?>">(<?= $dif >= 0 ? '+' : '' ?><?= $fmt($dif) ?>°)</span>
-                    <?php endif; ?>
-                </div>
+            <?php if ($geral): ?>
+                <div class="small text-muted">Média geral das máx.: <?= $fmt($geral['max']) ?>° <?= $dif($r['media_max'], $geral['max']) ?></div>
+                <div class="small text-muted">Média geral das mín.: <?= $fmt($geral['min']) ?>° <?= $dif($r['media_min'], $geral['min']) ?></div>
+            <?php else: ?>
+                <div class="small text-muted">Média geral: ainda sem anos suficientes.</div>
             <?php endif; ?>
             <div class="small text-muted">Maior: <strong><?= $fmt($r['maior']['valor']) ?>°C</strong> em <?= date('d/m', strtotime($r['maior']['dia'])) ?> às <?= $r['maior']['hora'] ?></div>
             <div class="small text-muted">Menor: <strong><?= $fmt($r['menor']['valor']) ?>°C</strong> em <?= date('d/m', strtotime($r['menor']['dia'])) ?> às <?= $r['menor']['hora'] ?></div>
@@ -132,7 +134,7 @@ $card = function (string $titulo, ?array $r, string $cor, bool $parcial, ?array 
 
     <div class="row g-3 mb-4">
         <?php $i = 0; foreach ($series as $ano => $s): ?>
-            <div class="col-md-4"><?php $card((string) $ano, $s['ano'], $cores[$i++ % count($cores)], $s['parcial']); ?></div>
+            <div class="col-md-4"><?php $card((string) $ano, $s['ano'], $cores[$i++ % count($cores)], $s['parcial'], $s['geral']); ?></div>
         <?php endforeach; ?>
     </div>
 
@@ -204,7 +206,7 @@ $card = function (string $titulo, ?array $r, string $cor, bool $parcial, ?array 
 
     <div class="row g-3 mb-4">
         <?php $i = 0; foreach ($series as $s): ?>
-            <div class="col-md-4"><?php $card($meses[$s['mes']] . ' de ' . $s['ano'], $s['resumo'], $cores[$i++ % count($cores)], $s['parcial'], $s['media_historica']); ?></div>
+            <div class="col-md-4"><?php $card($meses[$s['mes']] . ' de ' . $s['ano'], $s['resumo'], $cores[$i++ % count($cores)], $s['parcial'], $s['geral']); ?></div>
         <?php endforeach; ?>
     </div>
 

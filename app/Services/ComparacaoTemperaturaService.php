@@ -28,6 +28,7 @@ class ComparacaoTemperaturaService
     public function compararAnos(string $local, array $anos, string $primeiroDia): array
     {
         $historico = $this->model->getTemperaturaDiaria($local, $primeiroDia, $this->hoje);
+        [$mediaMensal, $anosMedia] = $this->mediaMensalHistorica($historico, $primeiroDia);
 
         $series = [];
         foreach ($anos as $ano) {
@@ -47,12 +48,11 @@ class ComparacaoTemperaturaService
             $series[$ano] = [
                 'mensal' => $mensal,
                 'ano' => $doAno ? $this->resumo($doAno) : null,
+                'geral' => $doAno ? $this->mediaGeral($doAno, $mediaMensal) : null,
                 'parcial' => $ano === (int) date('Y')
                     || ($ano === (int) substr($primeiroDia, 0, 4) && substr($primeiroDia, 5) !== '01-01'),
             ];
         }
-
-        [$mediaMensal, $anosMedia] = $this->mediaMensalHistorica($historico, $primeiroDia);
 
         return ['series' => $series, 'media_mensal' => $mediaMensal, 'anos_media' => $anosMedia];
     }
@@ -84,6 +84,7 @@ class ComparacaoTemperaturaService
                 'mes' => $mes,
                 'diario' => $diario,
                 'resumo' => $doMes ? $this->resumo($doMes) : null,
+                'geral' => $doMes ? $this->mediaGeral($doMes, $mediaMensal) : null,
                 'media_historica' => $mediaMensal[$mes],
                 'parcial' => $ym === substr($this->hoje, 0, 7),
             ];
@@ -112,23 +113,30 @@ class ComparacaoTemperaturaService
         $resumo = $this->resumo($doPeriodo);
         $resumo['media'] = ($resumo['media_max'] + $resumo['media_min']) / 2;
 
-        // média geral esperada: média histórica de cada mês, pesada pelos dias com dado no período
+        return ['resumo' => $resumo, 'geral' => $this->mediaGeral($doPeriodo, $mediaMensal), 'anos' => $anosMedia];
+    }
+
+    /**
+     * Média geral esperada pra um conjunto de dias: a média histórica de cada mês,
+     * pesada pelos dias com dado (assim um ano incompleto não é comparado com um ano cheio).
+     * Retorna ['max','min','media'] ou null se algum mês do período ainda não tem média geral.
+     */
+    private function mediaGeral(array $dias, array $mediaMensal): ?array
+    {
         $somaMax = $somaMin = $peso = 0;
-        foreach ($doPeriodo as $dia => $d) {
+        foreach ($dias as $dia => $d) {
             $hist = $mediaMensal[(int) substr($dia, 5, 2)];
             if ($hist === null) {
-                continue;
+                return null;
             }
             $somaMax += $hist['max'];
             $somaMin += $hist['min'];
             $peso++;
         }
-        // só compara se a média geral cobre o período inteiro
-        $geral = $peso === count($doPeriodo)
-            ? ['max' => $somaMax / $peso, 'min' => $somaMin / $peso, 'media' => ($somaMax + $somaMin) / 2 / $peso]
-            : null;
-
-        return ['resumo' => $resumo, 'geral' => $geral, 'anos' => $anosMedia];
+        if ($peso === 0) {
+            return null;
+        }
+        return ['max' => $somaMax / $peso, 'min' => $somaMin / $peso, 'media' => ($somaMax + $somaMin) / 2 / $peso];
     }
 
     /**
