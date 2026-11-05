@@ -33,7 +33,8 @@ $parceiros = $config['parceiros'] ?? [];
     <!-- SEO & Branding -->
     <link rel="icon" href="<?= htmlspecialchars($favicon) ?>" type="image/png">
     <link rel="shortcut icon" href="<?= htmlspecialchars($favicon) ?>" type="image/png">
-    <link rel="apple-touch-icon" href="<?= htmlspecialchars($favicon) ?>">
+    <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png">
+    <link rel="manifest" href="/manifest.webmanifest">
     <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
     <meta property="og:title" content="<?= htmlspecialchars($appTitulo) ?>">
     <meta property="og:description" content="<?= htmlspecialchars($metaDescription) ?>">
@@ -44,7 +45,7 @@ $parceiros = $config['parceiros'] ?? [];
     <meta name="theme-color" content="#0f1923">
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($appTitulo) ?>">
+    <meta name="apple-mobile-web-app-title" content="<?= htmlspecialchars($config['app']['nome_curto'] ?? 'Clima PBTO') ?>">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
     <title><?= htmlspecialchars($pageTitle ?? 'Início') ?> — <?= htmlspecialchars($appTitulo) ?></title>
@@ -223,5 +224,6 @@ $parceiros = $config['parceiros'] ?? [];
         };
     </script>
     <script src="<?= $assetsBase ?>/js/app.js?v=<?= time() ?>"></script>
+    <script src="<?= $assetsBase ?>/js/pwa.js?v=1" defer></script>
 </body>
 </html>

@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#0f1923">
+    <title>Sem conexão — Clima PBTO</title>
+    <link rel="icon" href="/img/icons/favicon-32.png" type="image/png">
+    <style>
+        :root { color-scheme: light; }
+        * { box-sizing: border-box; }
+        body {
+            margin: 0; min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 24px 16px; background: linear-gradient(180deg, #e0f0ff 0%, #f8f9fa 100%);
+            font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; color: #1a1a2e;
+        }
+        .caixa {
+            max-width: 420px; width: 100%; background: #fff; border-radius: 16px; padding: 32px 24px;
+            text-align: center; box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+        }
+        img { width: 88px; height: 88px; border-radius: 20px; }
+        h1 { font-size: 1.35rem; margin: 20px 0 8px; }
+        p { color: #6c757d; line-height: 1.5; margin: 0 0 24px; }
+        button {
+            background: #0d6efd; color: #fff; border: 0; border-radius: 999px; padding: 12px 28px;
+            font-size: 1rem; font-weight: 600; cursor: pointer;
+        }
+        button:focus-visible { outline: 3px solid #0a58ca; outline-offset: 3px; }
+    </style>
+</head>
+<body>
+    <main class="caixa">
+        <img src="/img/icons/icon-192.png" alt="Clima Pereira Barreto">
+        <h1>Você está sem conexão</h1>
+        <p>Não foi possível carregar esta página agora. As páginas que você já abriu continuam disponíveis; para dados atualizados, conecte-se à internet e tente de novo.</p>
+        <button type="button" onclick="location.reload()">Tentar de novo</button>
+    </main>
+</body>
+</html>

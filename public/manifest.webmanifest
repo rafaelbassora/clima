@@ -1,0 +1,26 @@
+{
+  "id": "/inicio",
+  "name": "Clima Pereira Barreto",
+  "short_name": "Clima PBTO",
+  "description": "Monitoramento climático de Pereira Barreto: chuva, temperatura, umidade, ventos, previsão do tempo e alertas.",
+  "lang": "pt-BR",
+  "dir": "ltr",
+  "start_url": "/inicio",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f1923",
+  "theme_color": "#0f1923",
+  "categories": ["weather", "utilities"],
+  "icons": [
+    { "src": "/img/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/img/icons/maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    { "name": "Chuva", "short_name": "Chuva", "url": "/inicio-chuva", "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Temperatura", "short_name": "Temperatura", "url": "/inicio-temperatura", "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Previsão do Tempo", "short_name": "Previsão", "url": "/previsao-do-tempo", "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192" }] },
+    { "name": "Pluviômetro Cidadão", "short_name": "Pluviômetro", "url": "/pluviometro-cidadao", "icons": [{ "src": "/img/icons/icon-192.png", "sizes": "192x192" }] }
+  ]
+}

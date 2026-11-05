@@ -1,3 +1,6 @@
+# Tipo correto do manifesto do PWA
+AddType application/manifest+json .webmanifest
+
 RewriteEngine On
 RewriteBase /
 

@@ -314,37 +314,26 @@ class LeituraModel
         });
     }
 
+
     /**
-     * Pressão (Barômetro) nos últimos 7 dias (mín/máx).
+     * Pressão dos últimos 7 dias (mín/máx por dia), a partir do resumo diário.
      */
     public function getPressao7Dias(string $local = '1'): array
     {
-        return $this->cache->remember("pressao_7dias_{$local}", $this->getTtlHistorico(), function () use ($local) {
-            $activation = '2026-04-13 15:00:00';
-            $since = date('Y-m-d', strtotime('-7 days'));
-
-            $results = $this->db->rawQuery(
-                "SELECT data_leitura AS data,
-                        MIN(COALESCE(bar, 0)) / 10 AS bar_min,
-                        MAX(COALESCE(bar, 0)) / 10 AS bar_max
-                 FROM leituras_completas
-                 WHERE local = ? AND created_at >= ? AND created_at >= ?
-                 GROUP BY data_leitura
-                 ORDER BY data DESC
-                 LIMIT 7",
-                [$local, $since, $activation]
-            );
-
-            return array_map(function ($row) use ($local) {
-                $data = $row['data'] ?? date('Y-m-d');
-                return [
-                    'data' => date('d/m/Y', strtotime($data)),
-                    'pressao_min' => number_format((float) ($row['bar_min'] ?? 0), 1, ',', '.'),
-                    'pressao_max' => number_format((float) ($row['bar_max'] ?? 0), 1, ',', '.'),
-                    'local' => $this->getLocalNome($local),
-                ];
-            }, $results ?: []);
-        });
+        $dias = array_filter(
+            $this->getResumoDiario($local, date('Y-m-d', strtotime('-7 days')), date('Y-m-d')),
+            fn ($d) => $d['bmin'] !== null
+        );
+        $saida = [];
+        foreach (array_slice(array_reverse($dias, true), 0, 7, true) as $dia => $d) {
+            $saida[] = [
+                'data' => date('d/m/Y', strtotime($dia)),
+                'pressao_min' => number_format($d['bmin'], 1, ',', '.'),
+                'pressao_max' => number_format($d['bmax'], 1, ',', '.'),
+                'local' => $this->getLocalNome($local),
+            ];
+        }
+        return $saida;
     }
 
     /**
@@ -378,35 +367,26 @@ class LeituraModel
         });
     }
 
+
     /**
-     * Vento nos últimos 7 dias (média/máx).
+     * Vento dos últimos 7 dias (média e rajada máxima por dia), a partir do resumo diário.
      */
     public function getVento7Dias(string $local = '1'): array
     {
-        return $this->cache->remember("vento_7dias_{$local}", $this->getTtlHistorico(), function () use ($local) {
-            $since = date('Y-m-d', strtotime('-7 days'));
-            $results = $this->db->rawQuery(
-                "SELECT data_leitura AS data,
-                        AVG(COALESCE(wspd, 0)) / 10 * 3.6 AS vento_avg,
-                        MAX(COALESCE(wspdhi, wspd, 0)) / 10 * 3.6 AS vento_max
-                 FROM leituras_completas
-                 WHERE local = ? AND created_at >= ?
-                 GROUP BY data_leitura
-                 ORDER BY data DESC
-                 LIMIT 7",
-                [$local, $since]
-            );
-
-            return array_map(function ($row) use ($local) {
-                $data = $row['data'] ?? date('Y-m-d');
-                return [
-                    'data' => date('d/m/Y', strtotime($data)),
-                    'vento_avg' => number_format((float) ($row['vento_avg'] ?? 0), 1, ',', '.'),
-                    'vento_max' => number_format((float) ($row['vento_max'] ?? 0), 1, ',', '.'),
-                    'local' => $this->getLocalNome($local),
-                ];
-            }, $results ?: []);
-        });
+        $dias = array_filter(
+            $this->getResumoDiario($local, date('Y-m-d', strtotime('-7 days')), date('Y-m-d')),
+            fn ($d) => $d['wmax'] !== null
+        );
+        $saida = [];
+        foreach (array_slice(array_reverse($dias, true), 0, 7, true) as $dia => $d) {
+            $saida[] = [
+                'data' => date('d/m/Y', strtotime($dia)),
+                'vento_avg' => number_format((float) $d['wavg'], 1, ',', '.'),
+                'vento_max' => number_format($d['wmax'], 1, ',', '.'),
+                'local' => $this->getLocalNome($local),
+            ];
+        }
+        return $saida;
     }
 
 
