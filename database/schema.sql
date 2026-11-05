@@ -313,7 +313,8 @@ CREATE TABLE `previsoes` (
   PRIMARY KEY (`id`),
   KEY `id` (`id`),
   KEY `data` (`data`),
-  KEY `local` (`local`)
+  KEY `local` (`local`),
+  KEY `idx_local_atualizacao` (`local`,`atualizacao`,`dia`)
 ) ENGINE=InnoDB AUTO_INCREMENT=388253 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 -- ----------------------------
