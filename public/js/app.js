@@ -38,6 +38,7 @@ function initAcessibilidade() {
         document.querySelectorAll('[data-a11y="contraste"]').forEach((b) => b.setAttribute('aria-pressed', estado.contraste ? 'true' : 'false'));
         document.querySelectorAll('[data-a11y="menos"]').forEach((b) => { b.disabled = estado.fonte <= 0; });
         document.querySelectorAll('[data-a11y="mais"]').forEach((b) => { b.disabled = estado.fonte >= MAX_FONTE; });
+        document.querySelectorAll('[data-a11y="restaurar"]').forEach((b) => { b.disabled = estado.fonte === 0 && !estado.contraste; });
     };
 
     document.addEventListener('click', (e) => {
@@ -47,11 +48,24 @@ function initAcessibilidade() {
         if (acao === 'mais') estado.fonte = Math.min(MAX_FONTE, estado.fonte + 1);
         if (acao === 'menos') estado.fonte = Math.max(0, estado.fonte - 1);
         if (acao === 'contraste') estado.contraste = !estado.contraste;
-        gravar(estado);
+        if (acao === 'restaurar') { estado.fonte = 0; estado.contraste = false; }
+        if (acao === 'restaurar') {
+            try { localStorage.removeItem('clima-a11y'); } catch (err) { /* navegação privada */ }
+        } else {
+            gravar(estado);
+        }
+        // o botão clicado pode ficar desabilitado (restaurar, ou A−/A+ no limite): devolve o foco à barra
+        const focoPerdido = document.activeElement === btn;
         aplicar();
-        anunciar(acao === 'contraste'
-            ? 'Alto contraste ' + (estado.contraste ? 'ativado' : 'desativado')
-            : 'Tamanho do texto: ' + (100 + estado.fonte * 12.5) + '%');
+        if (focoPerdido && btn.disabled) {
+            const outro = btn.parentElement && btn.parentElement.querySelector('[data-a11y]:not(:disabled)');
+            if (outro) outro.focus();
+        }
+        anunciar(acao === 'restaurar'
+            ? 'Acessibilidade restaurada para o padrão'
+            : acao === 'contraste'
+                ? 'Alto contraste ' + (estado.contraste ? 'ativado' : 'desativado')
+                : 'Tamanho do texto: ' + (100 + estado.fonte * 12.5) + '%');
     });
 
     // atalhos de teclado do eMAG

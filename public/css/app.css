@@ -847,3 +847,15 @@ html.a11y-contraste body .btn-close.btn-close:not([vw]):not([vw] *):not(img):not
     border: 0 !important;
     opacity: 1 !important;
 }
+
+/* no celular os botões de acessibilidade ficam na navbar, logo ao lado do título (o menu segue na ponta direita) */
+.mobile-navbar .navbar-a11y { margin: 0 auto 0 12px; gap: 4px; }
+/* a navbar tem altura fixa: título e menu em px pra não crescerem (e cortarem) com o texto ampliado */
+.mobile-navbar .navbar-brand { min-width: 0; overflow: hidden; white-space: nowrap; font-size: 17px; }
+.mobile-navbar .navbar-brand i { font-size: 21px; }
+.mobile-navbar .btn-menu { font-size: 21px; flex-shrink: 0; }
+@media (max-width: 380px) {
+    .mobile-navbar { padding: 0 12px; }
+    .mobile-navbar .navbar-a11y { gap: 3px; margin-left: 8px; }
+    .mobile-navbar .navbar-a11y .a11y-btn { width: 28px; height: 28px; }
+}

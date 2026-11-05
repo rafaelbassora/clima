@@ -98,10 +98,14 @@ $parceiros = $config['parceiros'] ?? [];
                 <span id="topbar-uv">UV: <?= $ul ? htmlspecialchars($ul['uv']) : '--' ?></span>
             </div>
         </div>
-        <div class="topbar-a11y" role="group" aria-label="Recursos de acessibilidade">
+<?php ob_start(); /* botões de acessibilidade: no topo (desktop) e na navbar (mobile) */ ?>
             <button type="button" class="a11y-btn" data-a11y="menos" aria-label="Diminuir o tamanho do texto" title="Diminuir texto">A<span aria-hidden="true">−</span></button>
             <button type="button" class="a11y-btn" data-a11y="mais" aria-label="Aumentar o tamanho do texto" title="Aumentar texto">A<span aria-hidden="true">+</span></button>
             <button type="button" class="a11y-btn" data-a11y="contraste" aria-label="Alto contraste" aria-pressed="false" title="Alto contraste"><i class="bi bi-circle-half" aria-hidden="true"></i></button>
+            <button type="button" class="a11y-btn" data-a11y="restaurar" aria-label="Restaurar o padrão de acessibilidade" title="Restaurar padrão" disabled><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i></button>
+<?php $a11yBotoes = ob_get_clean(); ?>
+        <div class="topbar-a11y d-none d-lg-flex" role="group" aria-label="Recursos de acessibilidade">
+<?= $a11yBotoes ?>
         </div>
         <div class="topbar-info">
             <span class="topbar-clock" id="topbar-clock">00:00<span class="clock-seconds">:00</span></span>
@@ -166,6 +170,9 @@ $parceiros = $config['parceiros'] ?? [];
             <i class="bi bi-cloud-sun-fill"></i>
             <?= htmlspecialchars($appNomeCurto) ?>
         </a>
+        <div class="topbar-a11y navbar-a11y" role="group" aria-label="Recursos de acessibilidade">
+<?= $a11yBotoes ?>
+        </div>
         <button class="btn-menu" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileMenu" aria-label="Menu">
             <i class="bi bi-list"></i>
         </button>
