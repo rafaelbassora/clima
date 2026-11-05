@@ -38,6 +38,8 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
     </div>
 </div>
 
+<?php require __DIR__ . '/../partials/medias-medida.php'; ?>
+
 <div class="row g-3">
     <!-- Recordes -->
     <div class="col-12">
@@ -148,7 +150,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                             </thead>
                             <tbody>
                                 <?php foreach ($resumoMensal as $row): ?>
-                                <tr class="<?= $row['max'] >= 1020 ? 'bg-danger bg-opacity-10' : ($row['min'] <= 1005 ? 'bg-primary bg-opacity-10' : '') ?>">
+                                <tr class="<?= ($row['max_num'] ?? 0) >= 1020 ? 'bg-danger bg-opacity-10' : (($row['min_num'] ?? 9999) <= 1005 ? 'bg-primary bg-opacity-10' : '') ?>">
                                     <td class="small"><?= $row['data'] ?></td>
                                     <td class="text-primary fw-bold"><?= $row['min'] ?></td>
                                     <td class="text-accent-warm fw-bold"><?= $row['max'] ?></td>

@@ -6,6 +6,9 @@ use Core\Cache;
 
 class LeituraModel
 {
+    /** Início das leituras válidas do barômetro (antes disso a coluna bar não é confiável). */
+    public const ATIVACAO_BAROMETRO = '2026-04-13 15:00:00';
+
     private \MysqliDb $db;
     private Cache $cache;
     private int $ttlRapido;
@@ -406,207 +409,232 @@ class LeituraModel
         });
     }
 
+
     /**
-     * Histórico de Pressão por mês/ano.
+     * Busca resumo mensal de pressão (mín/máx por dia).
      */
     public function getPressaoResumo(string $local, int $year, int $month): array
     {
-        $since = "{$year}-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-01";
-        $until = date('Y-m-t', strtotime($since));
-        $activation = '2026-04-13 15:00:00';
-
-        $results = $this->db->rawQuery(
-            "SELECT DATE(created_at) as data,
-                    MIN(COALESCE(bar, 0)) / 10 as bar_min,
-                    MAX(COALESCE(bar, 0)) / 10 as bar_max,
-                    created_at as full_date
-             FROM leituras_completas
-             WHERE local = ? AND created_at >= ? AND DATE(created_at) BETWEEN ? AND ?
-             GROUP BY data
-             ORDER BY data DESC",
-            [$local, $activation, $since, $until]
-        );
-
-        return array_map(function ($row) {
-            $data = $row['data'] ?? date('Y-m-d');
-            $full = $row['full_date'] ?? $data;
-            return [
-                'data' => date('d/m/Y', strtotime($data)),
-                'min' => number_format((float) ($row['bar_min'] ?? 0), 1, ',', '.'),
-                'max' => number_format((float) ($row['bar_max'] ?? 0), 1, ',', '.'),
-                'hora' => date('H:i', strtotime($full))
+        $saida = [];
+        foreach ($this->resumoDoPeriodo($local, $year, $month, 'bmin') as $dia => $d) {
+            $saida[] = [
+                'data' => date('d/m/Y', strtotime($dia)),
+                'min' => number_format($d['bmin'], 1, ',', '.'),
+                'max' => number_format($d['bmax'], 1, ',', '.'),
+                'min_num' => $d['bmin'],
+                'max_num' => $d['bmax'],
+                'hora' => $d['hbmax'] ?? '--:--',
             ];
-        }, $results ?: []);
+        }
+        return $saida;
     }
 
+
     /**
-     * Recordes de Pressão.
-     * TTL estendido para 1 hora para evitar lentidão em DBs na nuvem.
+     * Top 5 maiores e menores pressões (uma por dia), com horário.
      */
     public function getEstatisticasPressao(string $local): array
     {
-        return $this->cache->remember("stats_pressao_{$local}", 3600, function () use ($local) {
-            $activation = '2026-04-13 15:00:00';
-            // 1. Pega as extremas de cada dia
-            $maximasRaw = $this->db->rawQuery(
-                "SELECT data_leitura as dia, MAX(COALESCE(bar, 0)) as max_bar
-                 FROM leituras_completas
-                 WHERE local = ? AND created_at >= ?
-                 GROUP BY dia
-                 ORDER BY max_bar DESC
-                 LIMIT 5",
-                [$local, $activation]
-            );
+        $primeiro = $this->getPrimeiroDiaMedida($local, 'bar');
+        if (!$primeiro) {
+            return ['top_max' => [], 'top_min' => []];
+        }
+        $dias = array_filter($this->getResumoDiario($local, $primeiro, date('Y-m-d')), fn ($d) => $d['bmax'] !== null);
 
-            $minimasRaw = $this->db->rawQuery(
-                "SELECT data_leitura as dia, MIN(COALESCE(bar, 0)) as min_bar
-                 FROM leituras_completas
-                 WHERE local = ? AND created_at >= ? AND bar > 0
-                 GROUP BY dia
-                 ORDER BY min_bar ASC
-                 LIMIT 5",
-                [$local, $activation]
-            );
+        $max = $dias;
+        uksort($max, fn ($a, $b) => [$dias[$b]['bmax'], $a] <=> [$dias[$a]['bmax'], $b]);
+        $min = $dias;
+        uksort($min, fn ($a, $b) => [$dias[$a]['bmin'], $a] <=> [$dias[$b]['bmin'], $b]);
 
-            // 2. Busca o horário exato
-            $maximas = [];
-            foreach ($maximasRaw as $row) {
-                $item = $this->db->rawQueryOne(
-                    "SELECT created_at as data_hora, bar / 10 as valor
-                     FROM leituras_completas
-                     WHERE local = ? AND data_leitura = ? AND bar = ?
-                     LIMIT 1",
-                    [$local, $row['dia'], $row['max_bar']]
-                );
-                if ($item) {
-                    $item['dia'] = $row['dia'];
-                    $maximas[] = $item;
-                }
+        $fmt = function (array $lista, string $campo, string $hora): array {
+            $saida = [];
+            foreach (array_slice($lista, 0, 5, true) as $dia => $d) {
+                $saida[] = ['data_hora' => $dia . ' ' . ($d[$hora] ?? '00:00') . ':00', 'valor' => $d[$campo], 'dia' => $dia];
             }
+            return $saida;
+        };
 
-            $minimas = [];
-            foreach ($minimasRaw as $row) {
-                $item = $this->db->rawQueryOne(
-                    "SELECT created_at as data_hora, bar / 10 as valor
-                     FROM leituras_completas
-                     WHERE local = ? AND data_leitura = ? AND bar = ?
-                     LIMIT 1",
-                    [$local, $row['dia'], $row['min_bar']]
-                );
-                if ($item) {
-                    $item['dia'] = $row['dia'];
-                    $minimas[] = $item;
-                }
-            }
-
-            return [
-                'top_max' => $maximas,
-                'top_min' => $minimas
-            ];
-        });
+        return ['top_max' => $fmt($max, 'bmax', 'hbmax'), 'top_min' => $fmt($min, 'bmin', 'hbmin')];
     }
 
-    public function getUmidadeResumo(string $local, int $year, int $month): array
+
+
+    /**
+     * Resumo diário de umidade, pressão, vento e evapotranspiração, numa consulta por mês
+     * (índice idx_resumo). Meses fechados ficam 30 dias em cache; o mês atual segue o TTL curto.
+     * Retorna ['Y-m-d' => [
+     *   'hmin','hmax','havg'          umidade (%), null se o dia não tem umidade
+     *   'bmin','bmax','hbmin','hbmax' pressão (hPa) e horários, null antes da ativação do barômetro
+     *   'wavg','wmax','hwmax','dwmax' vento médio e rajada máx. (km/h), horário e direção (graus) da rajada
+     *   'et'                          evapotranspiração do dia (mm), null se não há leitura de ET
+     * ]]
+     */
+    public function getResumoDiario(string $local, string $inicio, string $fim): array
     {
-        return $this->cache->remember("umidade_resumo_{$local}_{$year}_{$month}", $this->getTtlHistorico(), function () use ($local, $year, $month) {
-            $since = "{$year}-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-01";
-            $until = date('Y-m-t', strtotime($since));
+        $dias = [];
+        $mesAtual = date('Y-m');
+        $cursor = new \DateTime(substr($inicio, 0, 7) . '-01');
+        $limite = new \DateTime($fim);
 
-            $results = $this->db->rawQuery(
-                "SELECT data_leitura as data,
-                        MIN(hum) as hum_min,
-                        MAX(hum) as hum_max
-                 FROM leituras_completas
-                 WHERE local = ? AND data_leitura BETWEEN ? AND ?
-                 GROUP BY data
-                 ORDER BY data DESC",
-                [$local, $since, $until]
-            );
+        while ($cursor <= $limite) {
+            $ym = $cursor->format('Y-m');
+            if ($ym > $mesAtual) {
+                break;
+            }
+            $s = $cursor->format('Y-m-01 00:00:00');
+            $e = $cursor->format('Y-m-t 23:59:59');
+            $ttl = $ym < $mesAtual ? 2592000 : $this->getTtlHistorico();
 
-            return array_map(function ($row) {
-                $data = $row['data'] ?? date('Y-m-d');
-                return [
-                    'data' => date('d/m/Y', strtotime($data)),
-                    'min' => (int) ($row['hum_min'] ?? 0),
-                    'max' => (int) ($row['hum_max'] ?? 0)
+            $rows = $this->cache->remember("resumo_diario_v1_{$local}_{$ym}", $ttl, function () use ($local, $s, $e) {
+                // montar o cache de muitos meses de uma vez pode passar do limite padrão de 30 s
+                @set_time_limit(120);
+                return $this->db->rawQuery(
+                    "SELECT DATE(created_at) AS dia,
+                            MIN(NULLIF(hum, 0)) AS hmin, MAX(NULLIF(hum, 0)) AS hmax, AVG(NULLIF(hum, 0)) AS havg,
+                            MIN(b) AS bmin, MAX(b) AS bmax,
+                            SUBSTRING_INDEX(GROUP_CONCAT(IF(b IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY b ASC, created_at ASC), ',', 1) AS hbmin,
+                            SUBSTRING_INDEX(GROUP_CONCAT(IF(b IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY b DESC, created_at ASC), ',', 1) AS hbmax,
+                            AVG(wspd) AS wavg, MAX(w) AS wmax,
+                            SUBSTRING_INDEX(GROUP_CONCAT(IF(w IS NULL, NULL, CONCAT(DATE_FORMAT(created_at, '%H:%i'), '|', IFNULL(wdir, ''))) ORDER BY w DESC, created_at ASC), ',', 1) AS wmax_info,
+                            SUM(et * diff_seg / 36000) AS et_mm, SUM(et IS NOT NULL) AS et_n
+                     FROM (
+                         SELECT created_at, hum, wspd, wdir, et,
+                                IF(bar > 0 AND created_at >= ?, bar, NULL) AS b,
+                                COALESCE(wspdhi, wspd) AS w,
+                                TIMESTAMPDIFF(SECOND, created_at, LEAD(created_at) OVER (ORDER BY created_at)) AS diff_seg
+                         FROM leituras_completas FORCE INDEX (idx_resumo)
+                         WHERE local = ? AND created_at BETWEEN ? AND ?
+                     ) t
+                     GROUP BY DATE(created_at)",
+                    [self::ATIVACAO_BAROMETRO, $local, $s, $e]
+                );
+            });
+
+            foreach ($rows as $row) {
+                [$hw, $dw] = array_pad(explode('|', (string) $row['wmax_info']), 2, null);
+                $dias[$row['dia']] = [
+                    'hmin' => $row['hmin'] !== null ? (int) $row['hmin'] : null,
+                    'hmax' => $row['hmax'] !== null ? (int) $row['hmax'] : null,
+                    'havg' => $row['havg'] !== null ? (float) $row['havg'] : null,
+                    'bmin' => $row['bmin'] !== null ? (int) $row['bmin'] / 10 : null,
+                    'bmax' => $row['bmax'] !== null ? (int) $row['bmax'] / 10 : null,
+                    'hbmin' => $row['hbmin'] ?: null,
+                    'hbmax' => $row['hbmax'] ?: null,
+                    'wavg' => $row['wavg'] !== null ? (float) $row['wavg'] / 10 * 3.6 : null,
+                    'wmax' => $row['wmax'] !== null ? (int) $row['wmax'] / 10 * 3.6 : null,
+                    'hwmax' => $hw ?: null,
+                    'dwmax' => ($dw !== null && $dw !== '') ? (int) $dw : null,
+                    'et' => (int) $row['et_n'] > 0 && $row['et_mm'] !== null ? (float) $row['et_mm'] : null,
                 ];
-            }, $results ?: []);
+            }
+            $cursor->modify('first day of next month');
+        }
+
+        $dias = array_filter($dias, fn ($dia) => $dia >= $inicio && $dia <= $fim, ARRAY_FILTER_USE_KEY);
+        ksort($dias);
+        return $dias;
+    }
+
+    /**
+     * Primeiro dia com dado de uma medida do resumo diário ('hum', 'bar', 'vento', 'et').
+     */
+    public function getPrimeiroDiaMedida(string $local, string $medida): ?string
+    {
+        $cond = [
+            'hum' => 'hum > 0',
+            'bar' => "bar > 0 AND created_at >= '" . self::ATIVACAO_BAROMETRO . "'",
+            'vento' => 'wspd IS NOT NULL',
+            'et' => 'et IS NOT NULL',
+        ][$medida] ?? null;
+        if ($cond === null) {
+            return null;
+        }
+        return $this->cache->remember("primeiro_dia_{$medida}_{$local}", 86400, function () use ($local, $cond) {
+            $row = $this->db->rawQueryOne(
+                "SELECT DATE(MIN(created_at)) AS dia FROM leituras_completas FORCE INDEX (idx_resumo) WHERE local = ? AND {$cond}",
+                [$local]
+            );
+            return $row['dia'] ?? null;
         });
     }
 
     /**
-     * Histórico de Ventos por mês/ano.
+     * Resumo diário de um mês (ou ano com $month = 'all'), do mais recente pro mais antigo,
+     * só com os dias em que o campo $campo tem valor.
+     */
+    private function resumoDoPeriodo(string $local, int $year, mixed $month, string $campo): array
+    {
+        if ($month === 'all') {
+            $inicio = "{$year}-01-01";
+            $fim = "{$year}-12-31";
+        } else {
+            $inicio = sprintf('%04d-%02d-01', $year, (int) $month);
+            $fim = date('Y-m-t', strtotime($inicio));
+        }
+        $dias = array_filter($this->getResumoDiario($local, $inicio, $fim), fn ($d) => $d[$campo] !== null);
+        return array_reverse($dias, true);
+    }
+
+    /**
+     * Busca resumo mensal de umidade (mín/máx por dia).
+     */
+    public function getUmidadeResumo(string $local, int $year, int $month): array
+    {
+        $saida = [];
+        foreach ($this->resumoDoPeriodo($local, $year, $month, 'hmin') as $dia => $d) {
+            $saida[] = [
+                'data' => date('d/m/Y', strtotime($dia)),
+                'min' => $d['hmin'],
+                'max' => $d['hmax'],
+            ];
+        }
+        return $saida;
+    }
+
+
+    /**
+     * Busca resumo mensal de vento (média, rajada máxima e direção da rajada por dia).
      */
     public function getVentoResumo(string $local, int $year, int $month): array
     {
-        $since = "{$year}-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-01";
-        $until = date('Y-m-t', strtotime($since));
-
-        $results = $this->db->rawQuery(
-            "SELECT DATE(created_at) as data,
-                    AVG(COALESCE(wspd, 0)) / 10 * 3.6 as vento_avg,
-                    MAX(COALESCE(wspdhi, wspd, 0)) / 10 * 3.6 as vento_max,
-                    MAX(wdir) as direcao,
-                    created_at as full_date
-             FROM leituras_completas
-             WHERE local = ? AND DATE(created_at) BETWEEN ? AND ?
-             GROUP BY data
-             ORDER BY data DESC",
-            [$local, $since, $until]
-        );
-
-        return array_map(function ($row) {
-            $data = $row['data'] ?? date('Y-m-d');
-            $full = $row['full_date'] ?? $data;
-            return [
-                'data' => date('d/m/Y', strtotime($data)),
-                'avg' => number_format((float) ($row['vento_avg'] ?? 0), 1, ',', '.'),
-                'max' => number_format((float) ($row['vento_max'] ?? 0), 1, ',', '.'),
-                'direcao' => $this->getDirecaoVento((int) ($row['direcao'] ?? 0)),
-                'hora' => date('H:i', strtotime($full))
+        $saida = [];
+        foreach ($this->resumoDoPeriodo($local, $year, $month, 'wmax') as $dia => $d) {
+            $saida[] = [
+                'data' => date('d/m/Y', strtotime($dia)),
+                'avg' => number_format((float) $d['wavg'], 1, ',', '.'),
+                'max' => number_format($d['wmax'], 1, ',', '.'),
+                'max_num' => $d['wmax'],
+                'direcao' => $this->getDirecaoVento((int) ($d['dwmax'] ?? 0)),
+                'hora' => $d['hwmax'] ?? '--:--',
             ];
-        }, $results ?: []);
+        }
+        return $saida;
     }
 
+
     /**
-     * Recordes de Vento.
-     * TTL estendido para 1 hora para evitar lentidão em DBs na nuvem.
+     * Top 5 rajadas (uma por dia), com horário e direção.
      */
     public function getEstatisticasVento(string $local): array
     {
-        return $this->cache->remember("stats_vento_{$local}", 3600, function () use ($local) {
-            // 1. Pega as máximas de cada dia
-            $maximasRaw = $this->db->rawQuery(
-                "SELECT DATE(created_at) as dia, MAX(COALESCE(wspdhi, wspd, 0)) as max_wspd
-                 FROM leituras_completas
-                 WHERE local = ?
-                 GROUP BY dia
-                 ORDER BY max_wspd DESC
-                 LIMIT 5",
-                [$local]
-            );
+        $primeiro = $this->getPrimeiroDiaMedida($local, 'vento');
+        if (!$primeiro) {
+            return ['top_max' => []];
+        }
+        $dias = array_filter($this->getResumoDiario($local, $primeiro, date('Y-m-d')), fn ($d) => $d['wmax'] !== null);
+        uksort($dias, fn ($a, $b) => [$dias[$b]['wmax'], $a] <=> [$dias[$a]['wmax'], $b]);
 
-            // 2. Busca o horário exato e direção de cada máxima
-            $maximas = [];
-            foreach ($maximasRaw as $row) {
-                $item = $this->db->rawQueryOne(
-                    "SELECT created_at as data_hora, COALESCE(wspdhi, wspd, 0) / 10 * 3.6 as valor, wdir as direcao
-                     FROM leituras_completas
-                     WHERE local = ? AND DATE(created_at) = ? AND COALESCE(wspdhi, wspd, 0) = ?
-                     LIMIT 1",
-                    [$local, $row['dia'], $row['max_wspd']]
-                );
-                if ($item) {
-                    $item['dia'] = $row['dia'];
-                    $item['direcao_label'] = $this->getDirecaoVento((int) ($item['direcao'] ?? 0));
-                    $maximas[] = $item;
-                }
-            }
-
-            return [
-                'top_max' => $maximas
+        $top = [];
+        foreach (array_slice($dias, 0, 5, true) as $dia => $d) {
+            $top[] = [
+                'data_hora' => $dia . ' ' . ($d['hwmax'] ?? '00:00') . ':00',
+                'valor' => $d['wmax'],
+                'direcao' => $d['dwmax'],
+                'dia' => $dia,
+                'direcao_label' => $this->getDirecaoVento((int) ($d['dwmax'] ?? 0)),
             ];
-        });
+        }
+        return ['top_max' => $top];
     }
 
     /**
@@ -1456,82 +1484,41 @@ class LeituraModel
         });
     }
 
+
     /**
-     * Busca ET diária filtrada para um mês ou ano específico.
+     * Evapotranspiração: total por dia (mês escolhido) ou por mês (ano todo, $month = 'all').
      */
     public function getEtResumo(string $local, int $year, mixed $month): array
     {
-        $cacheKey = "et_resumo_v1_{$local}_{$year}_{$month}";
-        return $this->cache->remember($cacheKey, $this->getTtlHistorico(), function () use ($local, $year, $month) {
+        $dias = $this->resumoDoPeriodo($local, $year, $month, 'et');
 
-            if ($month === 'all') {
-                $start = "{$year}-01-01 00:00:00";
-                $end = "{$year}-12-31 23:59:59";
-
-                $results = $this->db->rawQuery(
-                    "SELECT MONTH(data) as mes, SUM(total_mm) as max_et
-                     FROM (
-                         SELECT DATE(created_at) AS data,
-                                SUM(et * diff_seg / 36000) AS total_mm
-                         FROM (
-                             SELECT created_at, et,
-                                    TIMESTAMPDIFF(
-                                        SECOND,
-                                        created_at,
-                                        LEAD(created_at) OVER (ORDER BY created_at)
-                                    ) AS diff_seg
-                             FROM leituras_completas
-                             WHERE local = ? AND created_at BETWEEN ? AND ?
-                         ) t
-                         WHERE diff_seg IS NOT NULL
-                         GROUP BY DATE(created_at)
-                     ) t2
-                     GROUP BY mes
-                     ORDER BY mes DESC",
-                    [$local, $start, $end]
-                );
-
-                return array_map(function ($row) {
-                    $mesNum = (int) ($row['mes'] ?? 1);
-                    return [
-                        'mes' => $mesNum,
-                        'mes_nome' => $this->getMesNome($mesNum),
-                        'total' => number_format((float) ($row['max_et'] ?? 0), 2, ',', '.')
-                    ];
-                }, $results ?: []);
-            } else {
-                $start = "{$year}-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
-                $end = date('Y-m-t 23:59:59', strtotime($start));
-
-                $results = $this->db->rawQuery(
-                    "SELECT DATE(created_at) AS data,
-                            SUM(et * diff_seg / 36000) AS total_mm
-                     FROM (
-                         SELECT created_at, et,
-                                TIMESTAMPDIFF(
-                                    SECOND,
-                                    created_at,
-                                    LEAD(created_at) OVER (ORDER BY created_at)
-                                ) AS diff_seg
-                         FROM leituras_completas
-                         WHERE local = ? AND created_at BETWEEN ? AND ?
-                     ) t
-                     WHERE diff_seg IS NOT NULL
-                     GROUP BY DATE(created_at)
-                     ORDER BY data DESC",
-                    [$local, $start, $end]
-                );
-
-                return array_map(function ($row) {
-                    $data = $row['data'] ?? date('Y-m-d');
-                    return [
-                        'data' => date('d/m/Y', strtotime($data)),
-                        'dia' => date('d', strtotime($data)),
-                        'total' => number_format((float) ($row['total_mm'] ?? 0), 2, ',', '.')
-                    ];
-                }, $results ?: []);
+        if ($month === 'all') {
+            $porMes = [];
+            foreach ($dias as $dia => $d) {
+                $m = (int) substr($dia, 5, 2);
+                $porMes[$m] = ($porMes[$m] ?? 0) + $d['et'];
             }
-        });
+            krsort($porMes);
+            $saida = [];
+            foreach ($porMes as $m => $total) {
+                $saida[] = [
+                    'mes' => $m,
+                    'mes_nome' => $this->getMesNome($m),
+                    'total' => number_format($total, 2, ',', '.'),
+                ];
+            }
+            return $saida;
+        }
+
+        $saida = [];
+        foreach ($dias as $dia => $d) {
+            $saida[] = [
+                'data' => date('d/m/Y', strtotime($dia)),
+                'dia' => date('d', strtotime($dia)),
+                'total' => number_format($d['et'], 2, ',', '.'),
+            ];
+        }
+        return $saida;
     }
 
     private function getLocalNome(string $local): string

@@ -42,6 +42,8 @@
     </div>
 </div>
 
+<?php require __DIR__ . '/../partials/medias-medida.php'; ?>
+
 <div class="weather-card fade-in-up">
     <div class="card-body p-4">
         <div class="d-flex justify-content-between align-items-center mb-4">

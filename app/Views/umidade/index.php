@@ -37,6 +37,8 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
     </div>
 </div>
 
+<?php require __DIR__ . '/../partials/medias-medida.php'; ?>
+
 <div class="row g-3">
     <!-- Card 1: Últimas 24h -->
     <div class="col-md-6">

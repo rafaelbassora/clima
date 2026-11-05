@@ -7,12 +7,17 @@ use App\Models\LeituraModel;
 
 class PressaoController extends Controller
 {
+    use ComparaMedidaTrait;
+
     public function index(): void
     {
         $local = $this->getParam('local', '1');
         $year  = (int) $this->getParam('year', date('Y'));
         $month = (int) $this->getParam('month', date('n'));
-        
+        if ($month < 1 || $month > 12) {
+            $month = (int) date('n');
+        }
+
         $model = new LeituraModel();
 
         $data = [
@@ -24,10 +29,16 @@ class PressaoController extends Controller
             'pressao7dias' => $model->getPressao7Dias($local),
             'resumoMensal' => $model->getPressaoResumo($local, $year, $month),
             'estatisticas' => $model->getEstatisticasPressao($local),
+            'medias'       => $this->mediasDaMedida($model, 'pressao', $local, $year, $month),
             'meses'        => $model->getMeses(),
             'activeMenu'   => 'pressao',
         ];
 
         $this->view('pressao/index', $data);
+    }
+
+    public function comparar(): void
+    {
+        $this->compararMedida('pressao', 'pressao');
     }
 }

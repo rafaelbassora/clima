@@ -38,6 +38,8 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
     </div>
 </div>
 
+<?php require __DIR__ . '/../partials/medias-medida.php'; ?>
+
 <div class="row g-3">
     <!-- Recordes - Velocidade Máxima -->
     <div class="col-12">
@@ -115,7 +117,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                             </thead>
                             <tbody>
                                 <?php foreach ($resumoMensal as $row): ?>
-                                <tr class="<?= $row['max'] >= 40 ? 'bg-danger bg-opacity-10' : '' ?>">
+                                <tr class="<?= ($row['max_num'] ?? 0) >= 40 ? 'bg-danger bg-opacity-10' : '' ?>">
                                     <td class="small"><?= $row['data'] ?></td>
                                     <td><?= $row['avg'] ?> <small>km/h</small></td>
                                     <td class="fw-bold text-accent-warm"><?= $row['max'] ?> <small>km/h</small></td>
