@@ -15,6 +15,11 @@ $menuItems = [
     ['url' => '/admin/usuarios',        'icon' => 'bi-person-badge-fill',     'label' => 'Usuários',   'id' => 'usuarios'],
     ['url' => '/admin/2fa',             'icon' => 'bi-shield-lock-fill',      'label' => '2FA',        'id' => '2fa'],
 ];
+if (!empty($_SESSION['is_admin'])) {
+    array_splice($menuItems, count($menuItems) - 2, 0, [
+        ['url' => '/admin/exportar',    'icon' => 'bi-download',              'label' => 'Exportar Dados', 'id' => 'exportar'],
+    ]);
+}
 ?>
 <!DOCTYPE html>
 <html lang="pt-BR">

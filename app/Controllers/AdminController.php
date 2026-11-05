@@ -15,6 +15,7 @@ use App\Models\EstacaoConfigModel;
 use App\Services\TotpService;
 use App\Services\MailerService;
 use App\Services\WundergroundService;
+use App\Services\ExportacaoService;
 
 class AdminController extends Controller
 {
@@ -671,5 +672,110 @@ class AdminController extends Controller
         }
 
         header('Location: /admin/estacao');
+    }
+
+    // ------------------------------------------------------------------
+    // Exportação de dados (CSV / SQL) — só administradores
+    // ------------------------------------------------------------------
+
+    private function ehAdmin(): bool
+    {
+        return !empty($_SESSION['is_admin']);
+    }
+
+    public function exportar(): void
+    {
+        if (!$this->ehAdmin()) {
+            $this->view('admin/exportar/index', [
+                'activeMenu' => 'exportar',
+                'title' => 'Exportar Dados',
+                'semPermissao' => true,
+            ], 'admin');
+            return;
+        }
+
+        if (empty($_SESSION['csrf_exportar'])) {
+            $_SESSION['csrf_exportar'] = bin2hex(random_bytes(32));
+        }
+        $service = new ExportacaoService($this->db);
+        $periodos = $GLOBALS['cache']->remember('exportar_periodos_v1', 3600, fn () => $service->periodos());
+
+        $this->view('admin/exportar/index', [
+            'activeMenu' => 'exportar',
+            'title' => 'Exportar Dados',
+            'semPermissao' => false,
+            'tabelas' => ExportacaoService::TABELAS,
+            'periodos' => $periodos,
+            'token' => $_SESSION['csrf_exportar'],
+            'erro' => isset($_GET['erro']) ? (string) $_GET['erro'] : null,
+        ], 'admin');
+    }
+
+    public function exportarBaixar(): void
+    {
+        if (!$this->ehAdmin()) {
+            http_response_code(403);
+            echo 'Acesso restrito a administradores.';
+            return;
+        }
+        if (empty($_POST['token']) || empty($_SESSION['csrf_exportar']) || !hash_equals($_SESSION['csrf_exportar'], (string) $_POST['token'])) {
+            header('Location: /admin/exportar?erro=' . urlencode('Sessão expirada. Recarregue a página e tente de novo.'));
+            return;
+        }
+        [$erro, $p] = ExportacaoService::validar($_POST);
+        if ($erro) {
+            header('Location: /admin/exportar?erro=' . urlencode($erro));
+            return;
+        }
+
+        // libera a sessão (senão outras abas do admin travam durante um download longo)
+        session_write_close();
+        @set_time_limit(0);
+        while (ob_get_level() > 0) {
+            ob_end_clean();
+        }
+
+        $service = new ExportacaoService($this->db);
+        $nome = $service->nomeArquivo($p);
+        $tipo = $p['gzip'] ? 'application/gzip' : ($p['formato'] === 'csv' ? 'text/csv; charset=utf-8' : 'application/sql; charset=utf-8');
+        header('Content-Type: ' . $tipo);
+        header('Content-Disposition: attachment; filename="' . $nome . '"');
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+
+        $out = fopen('php://output', 'wb');
+        if ($p['gzip']) {
+            // window 31 = formato gzip (abre no 7-Zip, WinRAR, gunzip)
+            stream_filter_append($out, 'zlib.deflate', STREAM_FILTER_WRITE, ['window' => 31, 'level' => 6]);
+        }
+        try {
+            $service->exportar($p, $out);
+        } catch (\Throwable $e) {
+            fwrite($out, "\n-- ERRO NA EXPORTAÇÃO: " . $e->getMessage() . "\n");
+        }
+        fclose($out);
+        exit;
+    }
+
+    public function exportarContar(): void
+    {
+        header('Content-Type: application/json; charset=utf-8');
+        if (!$this->ehAdmin()) {
+            http_response_code(403);
+            echo json_encode(['erro' => 'Acesso restrito a administradores.']);
+            return;
+        }
+        [$erro, $p] = ExportacaoService::validar($_GET);
+        if ($erro) {
+            echo json_encode(['erro' => $erro]);
+            return;
+        }
+        @set_time_limit(120);
+        $service = new ExportacaoService($this->db);
+        echo json_encode([
+            'linhas' => $service->contar($p),
+            'filtros' => $service->descreverFiltros($p),
+            'arquivo' => $service->nomeArquivo($p),
+        ], JSON_UNESCAPED_UNICODE);
     }
 }

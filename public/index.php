@@ -175,6 +175,11 @@ $router->get('/admin/cidadaos',         'AdminController', 'cidadaos');
 $router->get('/admin/cidadao/aprovar',  'AdminController', 'cidadaoAprovar');
 $router->get('/admin/cidadao/rejeitar', 'AdminController', 'cidadaoRejeitar');
 
+// Exportação de dados (CSV/SQL)
+$router->get('/admin/exportar',         'AdminController', 'exportar');
+$router->post('/admin/exportar/baixar', 'AdminController', 'exportarBaixar');
+$router->get('/admin/exportar/contar',  'AdminController', 'exportarContar');
+
 // API (AJAX)
 $router->get('/api/clima-atual',      'ApiController',         'climaAtual');
 $router->post('/api/nowcasting',     'ApiController',         'postNowcasting');
