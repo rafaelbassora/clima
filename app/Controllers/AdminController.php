@@ -342,8 +342,56 @@ class AdminController extends Controller
     {
         $stats = $this->leituraModel->getNowcastingStats();
 
+        // ---- filtros do histórico (todos validados antes de entrar na consulta) ----
+        $data = function (string $k): string {
+            $v = (string) ($_GET[$k] ?? '');
+            return preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $v, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]) ? $v : '';
+        };
+        $f = [
+            'inicio'  => $data('inicio'),
+            'fim'     => $data('fim'),
+            'tipo'    => in_array($_GET['tipo'] ?? '', ['firme', 'chuva', 'melhoria'], true) ? $_GET['tipo'] : '',
+            'status'  => in_array($_GET['status'] ?? '', ['acertou', 'errou', 'pendente'], true) ? $_GET['status'] : '',
+            'busca'   => mb_substr(trim((string) ($_GET['busca'] ?? '')), 0, 100),
+            'chuva'   => !empty($_GET['chuva']) ? '1' : '',
+            'ordem'   => ($_GET['ordem'] ?? '') === 'asc' ? 'asc' : 'desc',
+            'por'     => in_array($porPagina = (int) ($_GET['por'] ?? 50), [25, 50, 100], true) ? $porPagina : 50,
+        ];
+        if ($f['inicio'] !== '' && $f['fim'] !== '' && $f['inicio'] > $f['fim']) {
+            [$f['inicio'], $f['fim']] = [$f['fim'], $f['inicio']];
+        }
+
+        $cond = [];
+        $params = [];
+        if ($f['inicio'] !== '') { $cond[] = 'created_at >= ?'; $params[] = $f['inicio'] . ' 00:00:00'; }
+        if ($f['fim'] !== '')    { $cond[] = 'created_at <= ?'; $params[] = $f['fim'] . ' 23:59:59'; }
+        if ($f['tipo'] !== '')   { $cond[] = 'tipo_previsao = ?'; $params[] = $f['tipo']; }
+        if ($f['status'] === 'acertou')  { $cond[] = 'acertou = 1'; }
+        if ($f['status'] === 'errou')    { $cond[] = 'acertou = 0'; }
+        if ($f['status'] === 'pendente') { $cond[] = 'acertou IS NULL'; }
+        if ($f['chuva'] !== '')  { $cond[] = 'chuva_registrada > 0'; }
+        if ($f['busca'] !== '') {
+            $cond[] = 'mensagem LIKE ?';
+            $params[] = '%' . addcslashes($f['busca'], '%_\\') . '%';
+        }
+        $where = $cond ? ' WHERE ' . implode(' AND ', $cond) : '';
+        $bind = $params ?: null; // a biblioteca não aceita lista vazia de parâmetros
+
+        $resumo = $this->db->rawQueryOne(
+            "SELECT COUNT(*) AS total, SUM(acertou = 1) AS acertos, SUM(acertou = 0) AS erros, SUM(acertou IS NULL) AS pendentes
+             FROM nowcasting{$where}",
+            $bind
+        ) ?: ['total' => 0, 'acertos' => 0, 'erros' => 0, 'pendentes' => 0];
+
+        $total = (int) $resumo['total'];
+        $paginas = max(1, (int) ceil($total / $f['por']));
+        $pagina = min($paginas, max(1, (int) ($_GET['pagina'] ?? 1)));
+        $offset = ($pagina - 1) * $f['por'];
+        $ordem = $f['ordem'] === 'asc' ? 'ASC' : 'DESC';
+
         $historico = $this->db->rawQuery(
-            "SELECT * FROM nowcasting ORDER BY created_at DESC LIMIT 50"
+            "SELECT * FROM nowcasting{$where} ORDER BY created_at {$ordem}, id {$ordem} LIMIT {$f['por']} OFFSET {$offset}",
+            $bind
         );
 
         $this->view('admin/nowcasting', [
@@ -351,6 +399,12 @@ class AdminController extends Controller
             'title' => 'Estatísticas de Nowcasting',
             'stats' => $stats,
             'historico' => $historico,
+            'filtros' => $f,
+            'resumoFiltro' => $resumo,
+            'filtrado' => (bool) $cond,
+            'pagina' => $pagina,
+            'paginas' => $paginas,
+            'totalFiltro' => $total,
             'nowcastConfig' => (new \App\Models\NowcastConfigModel())->getConfig(),
         ], 'admin');
     }

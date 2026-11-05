@@ -87,7 +87,104 @@
             </div>
         </div>
 
-        <h3 class="h5 fw-bold mb-3">Histórico de Validações (Últimas 50)</h3>
+        <?php
+        $f = $filtros ?? ['inicio' => '', 'fim' => '', 'tipo' => '', 'status' => '', 'busca' => '', 'chuva' => '', 'ordem' => 'desc', 'por' => 50];
+        $rf = $resumoFiltro ?? ['total' => 0, 'acertos' => 0, 'erros' => 0, 'pendentes' => 0];
+        $pagina = $pagina ?? 1;
+        $paginas = $paginas ?? 1;
+        $totalFiltro = (int) ($totalFiltro ?? 0);
+        $validadosFiltro = (int) $rf['acertos'] + (int) $rf['erros'];
+        $ratingFiltro = $validadosFiltro > 0 ? round((int) $rf['acertos'] / $validadosFiltro * 100, 1) : null;
+        // monta a URL mantendo os filtros atuais (só os preenchidos)
+        $urlPagina = function (int $p) use ($f): string {
+            $q = array_filter(array_merge($f, ['pagina' => $p]), fn ($v) => $v !== '' && $v !== null);
+            if (($q['ordem'] ?? '') === 'desc') unset($q['ordem']);
+            if ((int) ($q['por'] ?? 50) === 50) unset($q['por']);
+            if ((int) ($q['pagina'] ?? 1) === 1) unset($q['pagina']);
+            return '/admin/nowcasting' . ($q ? '?' . http_build_query($q) : '') . '#historico';
+        };
+        $deAte = $totalFiltro ? (($pagina - 1) * $f['por'] + 1) . '–' . min($totalFiltro, $pagina * $f['por']) : '0';
+        ?>
+
+        <h3 class="h5 fw-bold mb-3" id="historico">Histórico de Validações</h3>
+
+        <form method="GET" action="/admin/nowcasting#historico" class="border rounded-3 p-3 mb-3 bg-light bg-opacity-50">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1" for="fInicio">De</label>
+                    <input type="date" class="form-control form-control-sm" id="fInicio" name="inicio" value="<?= htmlspecialchars($f['inicio']) ?>">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1" for="fFim">Até</label>
+                    <input type="date" class="form-control form-control-sm" id="fFim" name="fim" value="<?= htmlspecialchars($f['fim']) ?>">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1" for="fTipo">Tipo</label>
+                    <select class="form-select form-select-sm" id="fTipo" name="tipo">
+                        <option value="">Todos</option>
+                        <?php foreach (['firme' => 'Firme', 'chuva' => 'Chuva', 'melhoria' => 'Melhoria'] as $v => $r): ?>
+                            <option value="<?= $v ?>" <?= $f['tipo'] === $v ? 'selected' : '' ?>><?= $r ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1" for="fStatus">Status</label>
+                    <select class="form-select form-select-sm" id="fStatus" name="status">
+                        <option value="">Todos</option>
+                        <?php foreach (['acertou' => 'Acertou', 'errou' => 'Errou', 'pendente' => 'Pendente'] as $v => $r): ?>
+                            <option value="<?= $v ?>" <?= $f['status'] === $v ? 'selected' : '' ?>><?= $r ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-md-4">
+                    <label class="form-label small fw-bold mb-1" for="fBusca">Buscar na mensagem</label>
+                    <input type="search" class="form-control form-control-sm" id="fBusca" name="busca" maxlength="100" placeholder="ex.: baixa chance, alta probabilidade, chovendo…" value="<?= htmlspecialchars($f['busca']) ?>">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1" for="fOrdem">Ordem</label>
+                    <select class="form-select form-select-sm" id="fOrdem" name="ordem">
+                        <option value="desc" <?= $f['ordem'] === 'desc' ? 'selected' : '' ?>>Mais recentes</option>
+                        <option value="asc" <?= $f['ordem'] === 'asc' ? 'selected' : '' ?>>Mais antigos</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label class="form-label small fw-bold mb-1" for="fPor">Por página</label>
+                    <select class="form-select form-select-sm" id="fPor" name="por">
+                        <?php foreach ([25, 50, 100] as $n): ?>
+                            <option value="<?= $n ?>" <?= (int) $f['por'] === $n ? 'selected' : '' ?>><?= $n ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-12 col-md-3">
+                    <div class="form-check mb-1">
+                        <input class="form-check-input" type="checkbox" id="fChuva" name="chuva" value="1" <?= $f['chuva'] ? 'checked' : '' ?>>
+                        <label class="form-check-label small" for="fChuva">Só com chuva registrada</label>
+                    </div>
+                </div>
+                <div class="col-12 col-md-5 d-flex gap-2 justify-content-md-end">
+                    <?php if (!empty($filtrado) || $f['ordem'] !== 'desc' || (int) $f['por'] !== 50): ?>
+                        <a href="/admin/nowcasting#historico" class="btn btn-sm btn-outline-secondary"><i class="bi bi-x-lg me-1"></i> Limpar</a>
+                    <?php endif; ?>
+                    <button type="submit" class="btn btn-sm btn-primary px-3"><i class="bi bi-funnel me-1"></i> Filtrar</button>
+                </div>
+            </div>
+        </form>
+
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2 small">
+            <div class="text-muted">
+                <strong class="text-body"><?= number_format($totalFiltro, 0, ',', '.') ?></strong> registro(s)<?= !empty($filtrado) ? ' com esses filtros' : '' ?>
+                · mostrando <?= $deAte ?>
+                <?php if ((int) $rf['pendentes'] > 0): ?> · <?= number_format((int) $rf['pendentes'], 0, ',', '.') ?> pendente(s)<?php endif; ?>
+            </div>
+            <?php if (!empty($filtrado) && $ratingFiltro !== null): ?>
+                <div>
+                    Rating deste filtro:
+                    <strong class="<?= $ratingFiltro >= 70 ? 'text-success' : ($ratingFiltro >= 50 ? 'text-warning' : 'text-danger') ?>"><?= number_format($ratingFiltro, 1, ',', '.') ?>%</strong>
+                    <span class="text-muted">(<?= number_format((int) $rf['acertos'], 0, ',', '.') ?> acertos de <?= number_format($validadosFiltro, 0, ',', '.') ?>)</span>
+                </div>
+            <?php endif; ?>
+        </div>
+
         <div class="table-responsive">
             <table class="table table-hover align-middle border-top">
                 <thead class="table-light">
@@ -101,11 +198,11 @@
                 </thead>
                 <tbody>
                     <?php if (empty($historico)): ?>
-                        <tr><td colspan="5" class="text-center py-4 text-muted">Aguardando validações de cron...</td></tr>
+                        <tr><td colspan="5" class="text-center py-4 text-muted"><?= !empty($filtrado) ? 'Nenhum registro com esses filtros.' : 'Aguardando validações de cron...' ?></td></tr>
                     <?php else: ?>
                         <?php foreach ($historico as $h): ?>
                         <tr>
-                            <td class="small"><?= date('d/m H:i', strtotime($h['created_at'])) ?></td>
+                            <td class="small text-nowrap"><?= date('d/m/Y H:i', strtotime($h['created_at'])) ?></td>
                             <td>
                                 <span class="badge rounded-pill text-uppercase bg-secondary bg-opacity-10 text-secondary border">
                                     <?= $h['tipo_previsao'] ?>
@@ -128,5 +225,36 @@
                 </tbody>
             </table>
         </div>
+
+        <?php if ($paginas > 1): ?>
+            <?php
+            // janela de páginas ao redor da atual: 1 … 4 5 [6] 7 8 … 20
+            $janela = array_unique(array_filter(
+                [1, $paginas, $pagina - 2, $pagina - 1, $pagina, $pagina + 1, $pagina + 2],
+                fn ($p) => $p >= 1 && $p <= $paginas
+            ));
+            sort($janela);
+            ?>
+            <nav aria-label="Paginação do histórico" class="d-flex flex-wrap justify-content-between align-items-center gap-2 mt-2">
+                <span class="small text-muted">Página <?= $pagina ?> de <?= number_format($paginas, 0, ',', '.') ?></span>
+                <ul class="pagination pagination-sm mb-0 flex-wrap">
+                    <li class="page-item <?= $pagina <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= htmlspecialchars($urlPagina(max(1, $pagina - 1))) ?>" aria-label="Página anterior">&laquo;</a>
+                    </li>
+                    <?php $anterior = 0; foreach ($janela as $p): ?>
+                        <?php if ($p - $anterior > 1): ?>
+                            <li class="page-item disabled"><span class="page-link">…</span></li>
+                        <?php endif; ?>
+                        <li class="page-item <?= $p === $pagina ? 'active' : '' ?>" <?= $p === $pagina ? 'aria-current="page"' : '' ?>>
+                            <a class="page-link" href="<?= htmlspecialchars($urlPagina($p)) ?>"><?= number_format($p, 0, ',', '.') ?></a>
+                        </li>
+                        <?php $anterior = $p; ?>
+                    <?php endforeach; ?>
+                    <li class="page-item <?= $pagina >= $paginas ? 'disabled' : '' ?>">
+                        <a class="page-link" href="<?= htmlspecialchars($urlPagina(min($paginas, $pagina + 1))) ?>" aria-label="Próxima página">&raquo;</a>
+                    </li>
+                </ul>
+            </nav>
+        <?php endif; ?>
     </div>
 </div>
