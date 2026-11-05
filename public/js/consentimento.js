@@ -100,10 +100,10 @@
         banner.setAttribute('aria-label', 'Aviso de cookies');
         banner.innerHTML =
             '<p><strong>Cookies</strong> — usamos cookies essenciais para o site funcionar e, se você permitir, ' +
-            'cookies de estatística (Google Analytics) para entender como o portal é usado. ' +
+            'cookies de estatística para entender como o portal é usado. ' +
             '<a href="/privacidade">Política de Privacidade</a>.</p>' +
-            '<div class="acoes"><button type="button" class="recusar">Recusar</button>' +
-            '<button type="button" class="aceitar">Aceitar</button></div>';
+            '<div class="acoes"><button type="button" class="aceitar">Aceitar</button>' +
+            '<button type="button" class="recusar">Recusar</button></div>';
         document.body.appendChild(banner);
         banner.querySelector('.aceitar').addEventListener('click', function () { decidir('aceito'); });
         banner.querySelector('.recusar').addEventListener('click', function () { decidir('recusado'); });
