@@ -44,10 +44,21 @@ class NoticiaController extends Controller
             exit;
         }
 
+        // link absoluto da notícia (compartilhar e prévia no WhatsApp/Facebook)
+        $dominio = $this->config['app']['dominio'] ?? ($_SERVER['HTTP_HOST'] ?? '');
+        $base = 'https://' . $dominio;
+        $urlNoticia = $base . '/noticias/view?id=' . (int) $noticia['id'];
+
         $this->view('noticias/view', [
             'pageTitle' => $noticia['titulo'],
             'noticia'   => $noticia,
-            'activeMenu' => 'noticias'
+            'activeMenu' => 'noticias',
+            'urlCompartilhar' => $urlNoticia,
+            'ogTitulo'    => $noticia['titulo'],
+            'ogDescricao' => $noticia['resumo'] ?? '',
+            'ogImagem'    => !empty($noticia['imagem']) ? $base . '/' . ltrim($noticia['imagem'], '/') : null,
+            'ogUrl'       => $urlNoticia,
+            'ogTipo'      => 'article',
         ]);
     }
 }

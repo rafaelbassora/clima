@@ -45,11 +45,18 @@ $parceiros = $config['parceiros'] ?? [];
     <link rel="apple-touch-icon" href="/img/icons/apple-touch-icon.png">
     <link rel="manifest" href="/manifest.webmanifest">
     <meta name="description" content="<?= htmlspecialchars($metaDescription) ?>">
-    <meta property="og:title" content="<?= htmlspecialchars($appTitulo) ?>">
-    <meta property="og:description" content="<?= htmlspecialchars($metaDescription) ?>">
-    <meta property="og:image" content="https://<?= htmlspecialchars($appDominio) ?><?= htmlspecialchars($favicon) ?>">
-    <meta property="og:url" content="https://<?= htmlspecialchars($appDominio) ?>/">
-    <meta property="og:type" content="website">
+    <!-- prévia de link (WhatsApp/Facebook/X): páginas como a notícia podem trocar via $og* -->
+    <meta property="og:title" content="<?= htmlspecialchars($ogTitulo ?? $appTitulo) ?>">
+    <meta property="og:description" content="<?= htmlspecialchars($ogDescricao ?? $metaDescription) ?>">
+    <meta property="og:image" content="<?= htmlspecialchars($ogImagem ?? ('https://' . $appDominio . $favicon)) ?>">
+    <meta property="og:url" content="<?= htmlspecialchars($ogUrl ?? ('https://' . $appDominio . '/')) ?>">
+    <meta property="og:type" content="<?= htmlspecialchars($ogTipo ?? 'website') ?>">
+    <meta property="og:site_name" content="<?= htmlspecialchars($appTitulo) ?>">
+    <meta property="og:locale" content="pt_BR">
+    <meta name="twitter:card" content="<?= !empty($ogImagem) ? 'summary_large_image' : 'summary' ?>">
+<?php if (!empty($ogUrl)): ?>
+    <link rel="canonical" href="<?= htmlspecialchars($ogUrl) ?>">
+<?php endif; ?>
 
     <meta name="theme-color" content="#0f1923">
     <meta name="mobile-web-app-capable" content="yes">
