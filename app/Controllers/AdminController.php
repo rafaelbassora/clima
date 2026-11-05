@@ -16,6 +16,7 @@ use App\Services\TotpService;
 use App\Services\MailerService;
 use App\Services\WundergroundService;
 use App\Services\ExportacaoService;
+use App\Services\NoticiaAutomaticaService;
 
 class AdminController extends Controller
 {
@@ -304,6 +305,97 @@ class AdminController extends Controller
             $this->cache->clear();
         }
         header('Location: /admin/noticias');
+    }
+
+    // ------------------------------------------------------------------
+    // Geração automática de notícias (rascunho a partir dos dados)
+    // ------------------------------------------------------------------
+
+    /**
+     * Lê o pedido (GET na prévia, POST ao salvar) e devolve [tipo, parametros, noticia|null, erro|null].
+     */
+    private function gerarNoticiaDoPedido(array $in, NoticiaAutomaticaService $service): array
+    {
+        $tipo = in_array($in['tipo'] ?? '', ['mes', 'ano', 'evento'], true) ? $in['tipo'] : '';
+        $anoAtual = (int) date('Y');
+        $p = [
+            'ano'   => min($anoAtual, max(2018, (int) ($in['ano'] ?? $anoAtual))),
+            'mes'   => min(12, max(1, (int) ($in['mes'] ?? (int) date('n', strtotime('first day of last month'))))),
+            'chave' => preg_match('/^(chuva|calor|frio|umidade|estiagem):[0-9:\-]{10,21}$/', (string) ($in['chave'] ?? '')) ? $in['chave'] : '',
+        ];
+        if ($tipo === 'mes' && sprintf('%04d-%02d', $p['ano'], $p['mes']) > date('Y-m')) {
+            return [$tipo, $p, null, 'Esse mês ainda não começou.'];
+        }
+        if ($tipo === '' || ($tipo === 'evento' && $p['chave'] === '')) {
+            return [$tipo, $p, null, null];
+        }
+        try {
+            $noticia = match ($tipo) {
+                'mes'    => $service->gerarMes($p['ano'], $p['mes']),
+                'ano'    => $service->gerarAno($p['ano']),
+                'evento' => $service->gerarEvento($p['chave']),
+            };
+            return [$tipo, $p, $noticia, null];
+        } catch (\Throwable $e) {
+            return [$tipo, $p, null, $e->getMessage()];
+        }
+    }
+
+    public function noticiaGerar(): void
+    {
+        if (empty($_SESSION['csrf_noticia_auto'])) {
+            $_SESSION['csrf_noticia_auto'] = bin2hex(random_bytes(32));
+        }
+        $service = new NoticiaAutomaticaService($this->leituraModel, $this->config);
+        [$tipo, $p, $noticia, $erro] = $this->gerarNoticiaDoPedido($_GET, $service);
+
+        // período para procurar eventos extremos (padrão: últimos 90 dias)
+        $valida = fn ($d) => is_string($d) && preg_match('/^(\d{4})-(\d{2})-(\d{2})$/', $d, $m) && checkdate((int) $m[2], (int) $m[3], (int) $m[1]);
+        $de = $valida($_GET['de'] ?? null) ? $_GET['de'] : date('Y-m-d', strtotime('-90 days'));
+        $ate = $valida($_GET['ate'] ?? null) ? $_GET['ate'] : date('Y-m-d');
+        if ($de > $ate) {
+            [$de, $ate] = [$ate, $de];
+        }
+
+        $this->view('admin/noticias/gerar', [
+            'title' => 'Gerar Notícia Automaticamente',
+            'activeMenu' => 'noticias',
+            'tipo' => $tipo,
+            'p' => $p,
+            'noticia' => $noticia,
+            'erro' => $erro,
+            'eventos' => $service->detectarEventos($de, $ate),
+            'de' => $de,
+            'ate' => $ate,
+            'token' => $_SESSION['csrf_noticia_auto'],
+        ], 'admin');
+    }
+
+    public function noticiaGerarSalvar(): void
+    {
+        if (empty($_POST['token']) || empty($_SESSION['csrf_noticia_auto']) || !hash_equals($_SESSION['csrf_noticia_auto'], (string) $_POST['token'])) {
+            header('Location: /admin/noticias/gerar');
+            return;
+        }
+        // gera de novo no servidor a partir dos parâmetros (os números vêm sempre do banco)
+        $service = new NoticiaAutomaticaService($this->leituraModel, $this->config);
+        [, , $noticia, $erro] = $this->gerarNoticiaDoPedido($_POST, $service);
+        if (!$noticia) {
+            header('Location: /admin/noticias/gerar?erro=' . urlencode($erro ?: 'Não foi possível gerar a notícia.'));
+            return;
+        }
+        $agora = date('Y-m-d H:i:s');
+        $id = $this->noticiaModel->create([
+            'titulo'           => $noticia['titulo'],
+            'resumo'           => $noticia['resumo'],
+            'conteudo'         => $noticia['conteudo'],
+            'imagem'           => null,
+            'ativo'            => 0, // rascunho: só aparece no site depois de revisada e ativada
+            'data_noticia'     => $agora,
+            'data_agendamento' => $agora,
+        ]);
+        $_SESSION['noticia_gerada'] = 'Rascunho gerado automaticamente a partir dos dados. Revise o texto, adicione uma imagem se quiser e marque "Ativo" para publicar.';
+        header('Location: /admin/noticia/edit?id=' . (int) $id);
     }
 
     private function uploadImagem(string $field): ?string

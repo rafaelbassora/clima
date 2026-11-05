@@ -5,6 +5,11 @@
     </a>
 </div>
 
+<?php if (!empty($_SESSION['noticia_gerada'])): ?>
+    <div class="alert alert-info"><i class="bi bi-magic me-1"></i><?= htmlspecialchars($_SESSION['noticia_gerada']) ?></div>
+    <?php unset($_SESSION['noticia_gerada']); ?>
+<?php endif; ?>
+
 <div class="card bg-dark text-white border-secondary shadow">
     <div class="card-body">
         <form method="POST" enctype="multipart/form-data">

@@ -160,6 +160,8 @@ $router->post('/admin/noticia/add',   'AdminController',        'noticiaAdd');
 $router->get('/admin/noticia/edit',   'AdminController',        'noticiaEdit');
 $router->post('/admin/noticia/edit',  'AdminController',        'noticiaEdit');
 $router->get('/admin/noticia/delete', 'AdminController',        'noticiaDelete');
+$router->get('/admin/noticias/gerar',         'AdminController', 'noticiaGerar');
+$router->post('/admin/noticias/gerar/salvar', 'AdminController', 'noticiaGerarSalvar');
 $router->get('/admin/nowcasting',     'AdminController',        'nowcasting');
 $router->get('/admin/nowcasting/recalibrar', 'AdminController', 'nowcastingRecalibrar');
 
