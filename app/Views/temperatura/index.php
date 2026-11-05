@@ -47,6 +47,49 @@
     </div>
 </div>
 
+<?php
+$mr = $medias['resumo'] ?? null;
+$mg = $medias['geral'] ?? null;
+$ma = $medias['anos'] ?? null;
+$fmtT = fn (float $v) => number_format($v, 1, ',', '.');
+$periodoTxt = ($month === 'all' ? 'em ' : 'em ' . mb_strtolower($meses[$month] ?? '') . ' de ') . $year;
+$geralTxt = $ma ? ($ma[0] === $ma[1] ? (string) $ma[0] : "{$ma[0]}–{$ma[1]}") : '';
+$tiles = $mr ? [
+    ['titulo' => 'Temperatura média', 'valor' => $mr['media'], 'geral' => $mg['media'] ?? null, 'cor' => 'text-dark', 'icone' => 'bi-thermometer-half'],
+    ['titulo' => 'Média das máximas', 'valor' => $mr['media_max'], 'geral' => $mg['max'] ?? null, 'cor' => 'text-accent-warm', 'icone' => 'bi-thermometer-sun'],
+    ['titulo' => 'Média das mínimas', 'valor' => $mr['media_min'], 'geral' => $mg['min'] ?? null, 'cor' => 'text-primary', 'icone' => 'bi-thermometer-snow'],
+] : [];
+?>
+<?php if ($tiles): ?>
+<div class="row g-3 mb-4 fade-in-up">
+    <?php foreach ($tiles as $t): ?>
+        <div class="col-md-4">
+            <div class="weather-card h-100 p-3 mb-0">
+                <div class="small text-muted fw-bold"><i class="bi <?= $t['icone'] ?> me-1"></i><?= $t['titulo'] ?> <?= htmlspecialchars($periodoTxt) ?></div>
+                <div class="fs-3 fw-bold <?= $t['cor'] ?>"><?= $fmtT($t['valor']) ?>°C</div>
+                <?php if ($t['geral'] !== null): ?>
+                    <?php $dif = $t['valor'] - $t['geral']; ?>
+                    <div class="small text-muted">
+                        Média geral: <?= $fmtT($t['geral']) ?>°C
+                        <span class="fw-bold <?= abs($dif) < 0.05 ? 'text-muted' : ($dif > 0 ? 'text-danger' : 'text-primary') ?>">
+                            (<?= $dif > 0 ? '+' : '' ?><?= $fmtT($dif) ?>°)
+                        </span>
+                    </div>
+                <?php else: ?>
+                    <div class="small text-muted">Ainda não há anos suficientes pra média geral deste período.</div>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endforeach; ?>
+    <div class="col-12">
+        <small class="text-muted">
+            <i class="bi bi-info-circle"></i> Médias dos <?= $mr['dias'] ?> dias com leitura<?= ($year === (int) date('Y') && ($month === 'all' || $month === (int) date('m'))) ? ' até agora (período em andamento)' : '' ?>.
+            Temperatura média = média de (máxima + mínima) ÷ 2 de cada dia. Média geral = média do mesmo mês em todos os anos em que ele está completo<?= $geralTxt ? " (dados desde {$ma[0]})" : '' ?>.
+        </small>
+    </div>
+</div>
+<?php endif; ?>
+
 <div class="weather-card fade-in-up">
     <div class="card-header-custom">
         <i class="bi bi-calendar3"></i>

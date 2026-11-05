@@ -93,6 +93,45 @@ class ComparacaoTemperaturaService
     }
 
     /**
+     * Médias de um mês (ou ano, com $month = 'all') e a média geral esperada pro mesmo período.
+     * No ano, a média geral é ponderada pelos dias que o ano escolhido tem em cada mês
+     * (assim um ano incompleto não é comparado com um ano cheio).
+     * Retorna ['resumo' => array|null, 'geral' => ['max','min','media']|null, 'anos' => [ini, fim]|null].
+     */
+    public function mediasDoPeriodo(string $local, int $year, mixed $month, string $primeiroDia): array
+    {
+        $historico = $this->model->getTemperaturaDiaria($local, $primeiroDia, $this->hoje);
+        [$mediaMensal, $anosMedia] = $this->mediaMensalHistorica($historico, $primeiroDia);
+
+        $prefixo = $month === 'all' ? sprintf('%04d-', $year) : sprintf('%04d-%02d-', $year, (int) $month);
+        $doPeriodo = array_filter($historico, fn ($dia) => str_starts_with($dia, $prefixo), ARRAY_FILTER_USE_KEY);
+        if (!$doPeriodo) {
+            return ['resumo' => null, 'geral' => null, 'anos' => $anosMedia];
+        }
+
+        $resumo = $this->resumo($doPeriodo);
+        $resumo['media'] = ($resumo['media_max'] + $resumo['media_min']) / 2;
+
+        // média geral esperada: média histórica de cada mês, pesada pelos dias com dado no período
+        $somaMax = $somaMin = $peso = 0;
+        foreach ($doPeriodo as $dia => $d) {
+            $hist = $mediaMensal[(int) substr($dia, 5, 2)];
+            if ($hist === null) {
+                continue;
+            }
+            $somaMax += $hist['max'];
+            $somaMin += $hist['min'];
+            $peso++;
+        }
+        // só compara se a média geral cobre o período inteiro
+        $geral = $peso === count($doPeriodo)
+            ? ['max' => $somaMax / $peso, 'min' => $somaMin / $peso, 'media' => ($somaMax + $somaMin) / 2 / $peso]
+            : null;
+
+        return ['resumo' => $resumo, 'geral' => $geral, 'anos' => $anosMedia];
+    }
+
+    /**
      * Médias e extremos de um conjunto de dias.
      */
     private function resumo(array $dias): array

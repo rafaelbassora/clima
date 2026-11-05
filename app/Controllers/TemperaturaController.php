@@ -20,9 +20,14 @@ class TemperaturaController extends Controller
         }
 
         $model = new LeituraModel();
+        $primeiroDia = $model->getPrimeiroDiaTemperatura($local);
+        $medias = $primeiroDia
+            ? (new ComparacaoTemperaturaService($model))->mediasDoPeriodo($local, $year, $month, $primeiroDia)
+            : ['resumo' => null, 'geral' => null, 'anos' => null];
 
         $data = [
             'pageTitle'         => 'Monitoramento de Temperatura',
+            'medias'            => $medias,
             'local'             => $local,
             'year'              => $year,
             'month'             => $month,
