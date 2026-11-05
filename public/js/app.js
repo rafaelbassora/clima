@@ -8,7 +8,74 @@ document.addEventListener('DOMContentLoaded', () => {
     initAjaxRefresh();
     initTooltips();
     initVoltarAoTopo();
+    initAcessibilidade();
 });
+
+/**
+ * Acessibilidade (barra do topo): tamanho do texto (A− / A+), alto contraste e atalhos eMAG.
+ * A preferência fica salva no aparelho ("clima-a11y") e é reaplicada antes da página aparecer (script no <head>).
+ * Atalhos: Alt+1 conteúdo, Alt+2 menu, Alt+3 rodapé.
+ */
+function initAcessibilidade() {
+    const html = document.documentElement;
+    const MAX_FONTE = 4; // 0 = 100% … 4 = 150%
+    const ler = () => { try { return JSON.parse(localStorage.getItem('clima-a11y') || '{}'); } catch (e) { return {}; } };
+    const gravar = (a) => { try { localStorage.setItem('clima-a11y', JSON.stringify(a)); } catch (e) { /* navegação privada */ } };
+    const estado = Object.assign({ fonte: 0, contraste: false }, ler());
+    estado.fonte = Math.min(MAX_FONTE, Math.max(0, parseInt(estado.fonte, 10) || 0));
+
+    // região "ao vivo" pra leitores de tela anunciarem a mudança
+    const aviso = document.createElement('div');
+    aviso.className = 'visually-hidden';
+    aviso.setAttribute('role', 'status');
+    aviso.setAttribute('aria-live', 'polite');
+    document.body.appendChild(aviso);
+    const anunciar = (txt) => { aviso.textContent = ''; setTimeout(() => { aviso.textContent = txt; }, 50); };
+
+    const aplicar = () => {
+        for (let i = 1; i <= MAX_FONTE; i++) html.classList.toggle('a11y-fonte-' + i, estado.fonte === i);
+        html.classList.toggle('a11y-contraste', !!estado.contraste);
+        document.querySelectorAll('[data-a11y="contraste"]').forEach((b) => b.setAttribute('aria-pressed', estado.contraste ? 'true' : 'false'));
+        document.querySelectorAll('[data-a11y="menos"]').forEach((b) => { b.disabled = estado.fonte <= 0; });
+        document.querySelectorAll('[data-a11y="mais"]').forEach((b) => { b.disabled = estado.fonte >= MAX_FONTE; });
+    };
+
+    document.addEventListener('click', (e) => {
+        const btn = e.target.closest && e.target.closest('[data-a11y]');
+        if (!btn) return;
+        const acao = btn.dataset.a11y;
+        if (acao === 'mais') estado.fonte = Math.min(MAX_FONTE, estado.fonte + 1);
+        if (acao === 'menos') estado.fonte = Math.max(0, estado.fonte - 1);
+        if (acao === 'contraste') estado.contraste = !estado.contraste;
+        gravar(estado);
+        aplicar();
+        anunciar(acao === 'contraste'
+            ? 'Alto contraste ' + (estado.contraste ? 'ativado' : 'desativado')
+            : 'Tamanho do texto: ' + (100 + estado.fonte * 12.5) + '%');
+    });
+
+    // atalhos de teclado do eMAG
+    document.addEventListener('keydown', (e) => {
+        if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+        const tecla = e.code ? e.code.replace(/^(Digit|Numpad)/, '') : e.key;
+        let alvo = null;
+        if (tecla === '1') alvo = document.getElementById('conteudo');
+        if (tecla === '2') {
+            const menuLateral = document.getElementById('menu');
+            // a sidebar é position:fixed (offsetParent sempre null); getClientRects vazio = escondida (d-none)
+            alvo = menuLateral && menuLateral.getClientRects().length > 0
+                ? (menuLateral.querySelector('a.nav-link') || menuLateral.querySelector('a'))
+                : document.querySelector('.mobile-navbar .btn-menu');
+        }
+        if (tecla === '3') alvo = document.getElementById('rodape');
+        if (!alvo) return;
+        e.preventDefault();
+        alvo.focus();
+        alvo.scrollIntoView({ block: 'start', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' });
+    });
+
+    aplicar();
+}
 
 /**
  * Botão "voltar ao topo": aparece só em páginas longas, depois de rolar um pouco.

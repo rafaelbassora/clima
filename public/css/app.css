@@ -750,3 +750,100 @@ body {
 @media print {
     #voltar-topo { display: none !important; }
 }
+
+/* ============================================
+   Acessibilidade (barra do topo + alto contraste)
+   ============================================ */
+
+/* tamanho do texto: o site usa rem, então escalar o <html> aumenta tudo junto */
+html.a11y-fonte-1 { font-size: 112.5%; }
+html.a11y-fonte-2 { font-size: 125%; }
+html.a11y-fonte-3 { font-size: 137.5%; }
+html.a11y-fonte-4 { font-size: 150%; }
+
+.topbar-data { min-width: 0; flex: 1 1 auto; }
+.topbar-a11y {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-shrink: 0;
+    margin: 0 14px 0 12px;
+}
+.a11y-btn {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.28);
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
+    font-family: inherit;
+    font-size: 13px;      /* tamanho fixo: o botão não cresce junto com o texto do site */
+    font-weight: 700;
+    line-height: 1;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background .15s;
+}
+.a11y-btn .bi { font-size: 15px; }
+.a11y-btn:hover:not(:disabled) { background: rgba(255, 255, 255, 0.2); }
+.a11y-btn:focus-visible { outline: 2px solid #9ec5fe; outline-offset: 2px; }
+.a11y-btn:disabled { opacity: 0.4; cursor: default; }
+.a11y-btn[aria-pressed="true"] { background: #ffd54f; border-color: #ffd54f; color: #000; }
+@media (max-width: 576px) {
+    .topbar-a11y { gap: 3px; margin: 0 0 0 8px; }
+    .a11y-btn { width: 30px; height: 30px; font-size: 12px; }
+}
+
+/* foco visível em tudo que é clicável (navegação por teclado) */
+a:focus-visible, button:focus-visible, .btn:focus-visible, [tabindex]:focus-visible {
+    outline: 3px solid #0d6efd;
+    outline-offset: 2px;
+}
+#conteudo:focus, #rodape:focus { outline: none; } /* alvos dos atalhos Alt+1/Alt+3 */
+
+/* ---------- Alto contraste (fundo preto, texto branco, links amarelos) ---------- */
+html.a11y-contraste body,
+html.a11y-contraste body *:not([vw]):not([vw] *):not(img):not(video):not(canvas):not(svg):not(svg *) {
+    background-color: #000 !important;
+    background-image: none !important;
+    color: #fff !important;
+    border-color: #fff !important;
+    box-shadow: none !important;
+    text-shadow: none !important;
+}
+html.a11y-contraste body a:not([vw]):not([vw] *):not(img):not(video):not(canvas):not(svg):not(svg *),
+html.a11y-contraste body a:not([vw] *) *:not([vw]):not([vw] *):not(img):not(video):not(canvas):not(svg):not(svg *) {
+    color: #ff0 !important;
+    text-decoration: underline !important;
+}
+html.a11y-contraste body button:not([vw]):not([vw] *):not(img):not(video):not(canvas):not(svg):not(svg *),
+html.a11y-contraste body .btn:not([vw]):not([vw] *):not(img):not(video):not(canvas):not(svg):not(svg *) {
+    color: #ff0 !important;
+    border: 1px solid #ff0 !important;
+}
+html.a11y-contraste input,
+html.a11y-contraste select,
+html.a11y-contraste textarea {
+    border: 1px solid #fff !important;
+}
+html.a11y-contraste ::placeholder { color: #ccc !important; }
+html.a11y-contraste body .a11y-btn[aria-pressed="true"]:not([vw]):not(img) { background-color: #ff0 !important; color: #000 !important; }
+html.a11y-contraste body .a11y-btn[aria-pressed="true"] *:not([vw]):not([vw] *):not(img):not(video):not(canvas):not(svg):not(svg *) { background-color: #ff0 !important; color: #000 !important; }
+/* gráficos: fundo branco pra continuarem legíveis */
+html.a11y-contraste canvas { background-color: #fff !important; border-radius: 6px; }
+html.a11y-contraste a:focus-visible,
+html.a11y-contraste button:focus-visible { outline: 3px solid #ff0 !important; }
+
+/* texto ampliado: blocos que eram "nowrap" passam a quebrar linha em vez de estourar a tela */
+html[class*="a11y-fonte-"] .forecast-extra { flex-shrink: 1; flex-wrap: wrap; min-width: 0; }
+html[class*="a11y-fonte-"] .forecast-extra-item { white-space: normal; }
+/* o "X" do botão fechar do Bootstrap é uma imagem de fundo: devolve ela (invertida, branca) no alto contraste */
+html.a11y-contraste body .btn-close.btn-close:not([vw]):not([vw] *):not(img):not(video):not(canvas):not(svg):not(svg *) {
+    background: transparent var(--bs-btn-close-bg) center / 1em auto no-repeat !important;
+    filter: invert(1) grayscale(100%) brightness(200%) !important;
+    border: 0 !important;
+    opacity: 1 !important;
+}

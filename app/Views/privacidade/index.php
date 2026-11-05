@@ -71,15 +71,16 @@ $atualizadaEm = '04/11/2026';
                         </table>
                     </div>
                     <p>O portal também pode guardar no seu aparelho uma cópia das páginas visitadas para funcionar sem internet
-                        (aplicativo instalável). Dá para mudar sua escolha sobre cookies a qualquer momento em
+                        (aplicativo instalável) e lembrar suas preferências de acessibilidade (tamanho do texto e alto
+                        contraste), sem enviar nada ao servidor. Dá para mudar sua escolha sobre cookies a qualquer momento em
                         <a href="#" data-preferencias-cookies>Preferências de cookies</a>.</p>
                 </section>
 
                 <section class="mb-5">
                     <h4 class="text-dark fw-bold mb-3">6. Compartilhamento</h4>
                     <p>Não vendemos nem cedemos seus dados. Alguns serviços de terceiros participam do funcionamento do portal,
-                        apenas para as finalidades acima: Google (estatísticas, se você aceitar), Cloudflare (proteção contra robôs)
-                        e o serviço de e-mail usado para recuperação de senha. Os dados também podem ser fornecidos a autoridades
+                        apenas para as finalidades acima: Google (estatísticas, se você aceitar), Cloudflare (proteção contra robôs),
+                        VLibras do Governo Federal (tradução para Libras) e o serviço de e-mail usado para recuperação de senha. Os dados também podem ser fornecidos a autoridades
                         quando houver obrigação legal.</p>
                 </section>
 

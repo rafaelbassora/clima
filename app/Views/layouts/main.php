@@ -17,6 +17,16 @@ $parceiros = $config['parceiros'] ?? [];
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
+    <!-- Acessibilidade: aplica tamanho de fonte e alto contraste salvos ANTES de desenhar a página (sem "piscar") -->
+    <script>
+        (function () {
+            try {
+                var a = JSON.parse(localStorage.getItem('clima-a11y') || '{}'), h = document.documentElement;
+                if (a.fonte >= 1 && a.fonte <= 4) h.classList.add('a11y-fonte-' + a.fonte);
+                if (a.contraste) h.classList.add('a11y-contraste');
+            } catch (e) { /* navegação privada: segue no padrão */ }
+        })();
+    </script>
     <!-- Google Analytics: só carrega depois do consentimento (ver /js/consentimento.js) -->
     <script>
         window.CLIMA_GA_ID = <?= json_encode((string) ($config['ga_id'] ?? '')) ?>;
@@ -88,6 +98,11 @@ $parceiros = $config['parceiros'] ?? [];
                 <span id="topbar-uv">UV: <?= $ul ? htmlspecialchars($ul['uv']) : '--' ?></span>
             </div>
         </div>
+        <div class="topbar-a11y" role="group" aria-label="Recursos de acessibilidade">
+            <button type="button" class="a11y-btn" data-a11y="menos" aria-label="Diminuir o tamanho do texto" title="Diminuir texto">A<span aria-hidden="true">−</span></button>
+            <button type="button" class="a11y-btn" data-a11y="mais" aria-label="Aumentar o tamanho do texto" title="Aumentar texto">A<span aria-hidden="true">+</span></button>
+            <button type="button" class="a11y-btn" data-a11y="contraste" aria-label="Alto contraste" aria-pressed="false" title="Alto contraste"><i class="bi bi-circle-half" aria-hidden="true"></i></button>
+        </div>
         <div class="topbar-info">
             <span class="topbar-clock" id="topbar-clock">00:00<span class="clock-seconds">:00</span></span>
             <span class="d-none d-sm-inline">
@@ -104,7 +119,7 @@ $parceiros = $config['parceiros'] ?? [];
     <div class="dev-bar">⚠️ SISTEMA EM DESENVOLVIMENTO — NÃO LIBERADO PARA USO REAL</div>
     <?php endif; ?>
 
-    <aside class="sidebar d-none d-lg-block">
+    <aside class="sidebar d-none d-lg-block" id="menu" aria-label="Menu principal">
         <a href="<?= url('/inicio') ?>?local=1" class="sidebar-brand">
             <i class="bi bi-cloud-sun-fill"></i>
             <?= htmlspecialchars($appNomeCurto) ?>
@@ -185,12 +200,12 @@ $parceiros = $config['parceiros'] ?? [];
     </div>
 
     <!-- ============ MAIN CONTENT ============ -->
-    <main class="main-content">
+    <main class="main-content" id="conteudo" tabindex="-1">
         <?= $content ?>
     </main>
 
     <!-- ============ FOOTER ============ -->
-    <footer class="footer">
+    <footer class="footer" id="rodape" tabindex="-1">
         <div class="container">
             <?php if (!empty($parceiros)): ?>
             <div class="footer-logos">
@@ -230,5 +245,18 @@ $parceiros = $config['parceiros'] ?? [];
     </script>
     <script src="<?= asset('/js/app.js') ?>"></script>
     <script src="<?= asset('/js/pwa.js') ?>" defer></script>
+
+    <!-- VLibras: tradução do conteúdo para Libras (widget oficial do Governo Federal) -->
+    <div vw class="enabled">
+        <div vw-access-button class="active"></div>
+        <div vw-plugin-wrapper><div class="vw-plugin-top-wrapper"></div></div>
+    </div>
+    <script>
+        // o Widget monta a interface no window.onload, então precisa ser criado antes dele (no onload do script)
+        function climaIniciarVLibras() {
+            if (window.VLibras) { new window.VLibras.Widget('https://vlibras.gov.br/app'); }
+        }
+    </script>
+    <script src="https://vlibras.gov.br/app/vlibras-plugin.js" defer onload="climaIniciarVLibras()"></script>
 </body>
 </html>
