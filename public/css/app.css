@@ -330,6 +330,13 @@ body {
         flex-wrap: wrap;
         gap: 15px 30px;
     }
+
+    /* "Tendência do Tempo": no celular ocupa a largura toda do banner (não encolhe até o tamanho do texto) */
+    .forecast-banner .nowcasting-alert {
+        flex: 1 1 100%;
+        width: 100%;
+        margin-top: 0 !important;
+    }
 }
 
 .forecast-banner .forecast-title {

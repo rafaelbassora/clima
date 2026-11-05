@@ -31,7 +31,7 @@ $localNome = match($local) {
         <div class="forecast-title d-flex align-items-center gap-2">
             <span>Previsão hoje</span>
             <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-10 fw-normal py-1 px-2" style="font-size: 0.7rem; letter-spacing: 0.5px;">
-                <i class="bi bi-droplet-slash me-1"></i> <?= $estatisticas['current_drought'] ?> dias sem chuva
+                <i class="bi bi-droplet-slash me-1"></i> <?= (int) $estatisticas['current_drought'] ?> <?= (int) $estatisticas['current_drought'] === 1 ? 'dia' : 'dias' ?> sem chuva
             </span>
         </div>
         <div class="forecast-detail">
