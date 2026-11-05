@@ -13,6 +13,8 @@ document.addEventListener('DOMContentLoaded', () => {
  * Inicializa os tooltips do Bootstrap
  */
 function initTooltips() {
+    // se o Bootstrap não carregou (sem internet, CDN fora), segue sem tooltips em vez de quebrar a página
+    if (typeof bootstrap === 'undefined' || !bootstrap.Tooltip) return;
     const tooltipTriggerList = [].slice.call(document.querySelectorAll('[title]'));
     tooltipTriggerList.map(function (tooltipTriggerEl) {
         return new bootstrap.Tooltip(tooltipTriggerEl, {

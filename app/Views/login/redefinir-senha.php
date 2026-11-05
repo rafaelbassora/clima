@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= $title ?? 'Redefinir Senha - Clima PB' ?></title>
     <link rel="shortcut icon" href="/img/logo.png" type="image/png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link rel="stylesheet" href="<?= asset('/css/app.css') ?>">
     <style>
         body { background: var(--gradient-topbar); height: 100vh; display: flex; align-items: center; justify-content: center; margin: 0; }

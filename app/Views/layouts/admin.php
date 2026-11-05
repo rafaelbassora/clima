@@ -29,7 +29,7 @@ if (!empty($_SESSION['is_admin'])) {
     <title><?= htmlspecialchars($title ?? 'Admin') ?> — <?= htmlspecialchars($config['app']['nome_curto'] ?? 'Clima') ?></title>
     <link rel="icon" href="<?= htmlspecialchars($config['branding']['favicon'] ?? '/img/logo.png') ?>" type="image/png">
     <link rel="shortcut icon" href="<?= htmlspecialchars($config['branding']['favicon'] ?? '/img/logo.png') ?>" type="image/png">
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet" crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="<?= asset('/css/app.css') ?>" rel="stylesheet">
@@ -220,6 +220,6 @@ if (!empty($_SESSION['is_admin'])) {
         </footer>
     </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" crossorigin="anonymous"></script>
 </body>
 </html>

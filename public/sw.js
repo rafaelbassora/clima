@@ -2,10 +2,10 @@
  * Service worker do Clima Pereira Barreto (PWA).
  * - Páginas: rede primeiro (dados sempre atualizados); sem conexão, mostra a última versão salva ou a página offline.
  * - CSS/JS/imagens do site: rede primeiro (sempre a versão nova); a cópia guardada só é usada sem internet.
- * - Bibliotecas de CDN (Bootstrap, ícones, Chart.js): cache primeiro (versões fixas).
+ * - Bibliotecas de CDN (Bootstrap, ícones, Chart.js): cache primeiro (versões fixas), só para pedidos com crossorigin.
  * - Área administrativa, login, painel do cidadão e API: nunca passam pelo cache.
  */
-const VERSAO = 'clima-v3';
+const VERSAO = 'clima-v4'; // ao mudar, o activate apaga todos os caches das versões anteriores
 const CACHE_ESTATICO = `${VERSAO}-estatico`;
 const CACHE_PAGINAS = `${VERSAO}-paginas`;
 const CACHE_CDN = `${VERSAO}-cdn`;
@@ -93,11 +93,15 @@ async function estaticoRedePrimeiro(request) {
 }
 
 async function cdnCachePrimeiro(request) {
+    // Só guarda respostas "cors" (pedidas com crossorigin). Uma resposta opaca (pedido sem crossorigin)
+    // NÃO pode ser reaproveitada por uma página que pede o mesmo arquivo com crossorigin — o navegador
+    // recusa ("an opaque response was used for a request whose type is not no-cors") e o Bootstrap não carrega.
+    if (request.mode !== 'cors') return fetch(request);
     const cache = await caches.open(CACHE_CDN);
     const salvo = await cache.match(request);
-    if (salvo) return salvo;
+    if (salvo && salvo.type === 'cors') return salvo;
     const resposta = await fetch(request);
-    if (resposta.ok || resposta.type === 'opaque') cache.put(request, resposta.clone());
+    if (resposta.ok && resposta.type === 'cors') cache.put(request, resposta.clone());
     return resposta;
 }
 
