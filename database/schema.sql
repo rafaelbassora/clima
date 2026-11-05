@@ -146,6 +146,8 @@ CREATE TABLE `estacao_config` (
   `wunderground_api_key` varchar(100) DEFAULT NULL,
   `wunderground_station_id` varchar(50) DEFAULT NULL,
   `frequencia_minutos` int NOT NULL DEFAULT '5',
+  `latitude` decimal(9,6) DEFAULT NULL,
+  `longitude` decimal(9,6) DEFAULT NULL,
   `ultima_sincronizacao` datetime DEFAULT NULL,
   `ultimo_erro` varchar(255) DEFAULT NULL,
   `atualizado_em` datetime DEFAULT NULL,

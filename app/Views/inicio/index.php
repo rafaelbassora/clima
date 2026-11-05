@@ -43,6 +43,20 @@ $localNome = match($local) {
             <?php endif; ?>
             <br><small class="text-muted">Fonte: <?= htmlspecialchars($previsaoHoje['fonte'] ?? 'CPTEC/INPE') ?></small>
         </div>
+        <?php
+        $solHoje = \App\Services\AstronomiaService::sol();
+        $luaHoje = \App\Services\AstronomiaService::lua();
+        ?>
+        <div class="forecast-astro">
+            <?php if ($solHoje['nascer'] && $solHoje['por']): ?>
+                <span title="Nascer do sol"><i class="bi bi-sunrise" aria-hidden="true"></i> <span class="visually-hidden">Nascer do sol:</span> <?= date('H:i', $solHoje['nascer']) ?></span>
+                <span title="Pôr do sol"><i class="bi bi-sunset" aria-hidden="true"></i> <span class="visually-hidden">Pôr do sol:</span> <?= date('H:i', $solHoje['por']) ?></span>
+            <?php endif; ?>
+            <span title="Fase da lua: <?= htmlspecialchars($luaHoje['nome']) ?>, <?= $luaHoje['iluminacao'] ?>% iluminada">
+                <span class="lua-emoji<?= \App\Services\AstronomiaService::hemisferioSul() ? ' lua-sul' : '' ?>" aria-hidden="true"><?= $luaHoje['emoji'] ?></span>
+                <?= htmlspecialchars($luaHoje['nome']) ?> <span class="text-muted">· <?= $luaHoje['iluminacao'] ?>%</span>
+            </span>
+        </div>
         <a href="/previsao-do-tempo?local=<?= htmlspecialchars($local) ?>" class="badge-link">
             Previsão 7 dias <i class="bi bi-arrow-right"></i>
         </a>

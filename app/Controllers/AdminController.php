@@ -779,12 +779,33 @@ class AdminController extends Controller
                 $erro = 'Pra usar a fonte Wunderground, informe a API Key e o Station ID.';
             }
 
+            // Coordenadas da estação (nascer/pôr do sol, UV só de dia). Aceita vírgula decimal; vazio = padrão.
+            $coord = function (string $campo, float $limite) {
+                $v = str_replace(',', '.', trim((string) ($_POST[$campo] ?? '')));
+                if ($v === '') {
+                    return null;
+                }
+                if (!is_numeric($v) || abs((float) $v) > $limite) {
+                    return false;
+                }
+                return round((float) $v, 6);
+            };
+            $latitude = $coord('latitude', 90);
+            $longitude = $coord('longitude', 180);
+            if (!$erro && ($latitude === false || $longitude === false)) {
+                $erro = 'Coordenadas inválidas: a latitude vai de -90 a 90 e a longitude de -180 a 180 (ex.: -20.6383 e -51.1092).';
+            } elseif (!$erro && (($latitude === null) !== ($longitude === null))) {
+                $erro = 'Informe a latitude e a longitude juntas (ou deixe as duas em branco para usar o padrão).';
+            }
+
             if (!$erro) {
                 $configModel->atualizar([
                     'fonte_dados' => $fonte,
                     'wunderground_api_key' => $apiKey,
                     'wunderground_station_id' => $stationId,
                     'frequencia_minutos' => $frequencia,
+                    'latitude' => $latitude,
+                    'longitude' => $longitude,
                 ]);
                 $_SESSION['estacao_config_sucesso'] = 'Configuração salva com sucesso.';
                 header('Location: /admin/estacao');

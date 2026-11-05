@@ -11,6 +11,8 @@ class EstacaoConfigModel
         'wunderground_api_key' => null,
         'wunderground_station_id' => null,
         'frequencia_minutos' => 5,
+        'latitude' => null,   // null = padrão do AstronomiaService (Prefeitura de Pereira Barreto)
+        'longitude' => null,
         'ultima_sincronizacao' => null,
         'ultimo_erro' => null,
         'atualizado_em' => null,
@@ -36,6 +38,8 @@ class EstacaoConfigModel
             'wunderground_api_key' => $dados['wunderground_api_key'] ?: null,
             'wunderground_station_id' => $dados['wunderground_station_id'] ?: null,
             'frequencia_minutos' => (int) $dados['frequencia_minutos'],
+            'latitude' => $dados['latitude'] ?? null,
+            'longitude' => $dados['longitude'] ?? null,
             'atualizado_em' => date('Y-m-d H:i:s'),
         ]);
     }

@@ -100,7 +100,8 @@ $parceiros = $config['parceiros'] ?? [];
                 <i class="bi bi-wind wind-icon"></i>
                 <span id="topbar-wind"><?= $ul ? htmlspecialchars($ul['vento']) . ' (' . htmlspecialchars($ul['rajada']) . ') km/h ' . htmlspecialchars($ul['direcao']) : '--' ?></span>
             </div>
-            <div class="topbar-metric" title="Índice UV">
+            <?php $uvDeDia = \App\Services\AstronomiaService::ehDia(); /* UV só entre o amanhecer e o anoitecer */ ?>
+            <div class="topbar-metric<?= $uvDeDia ? "" : " d-none" ?>" title="Índice UV" id="topbar-uv-metric">
                 <i class="bi bi-sun-fill uv-icon"></i>
                 <span id="topbar-uv">UV: <?= $ul ? htmlspecialchars($ul['uv']) : '--' ?></span>
             </div>

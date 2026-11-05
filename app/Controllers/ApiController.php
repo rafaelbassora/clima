@@ -43,6 +43,7 @@ class ApiController extends Controller
                 'direcao_graus' => $leitura['direcao_graus'] ?? 0,
                 'solar'       => $leitura['solar'],
                 'uv'          => $leitura['uv'],
+                'uv_visivel'  => \App\Services\AstronomiaService::ehDia(), // UV só de dia (amanhecer até anoitecer)
                 'sensacao'    => $leitura['sensacao'] ?? 0,
                 'orvalho'     => $leitura['ponto_orvalho'] ?? 0,
                 'chuva_dia'   => $leitura['chuva_dia'] ?? 0,

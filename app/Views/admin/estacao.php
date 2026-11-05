@@ -92,6 +92,38 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
                     </div>
                 </div>
 
+                <?php
+                $latSalva = $estacaoConfig['latitude'] ?? null;
+                $lonSalva = $estacaoConfig['longitude'] ?? null;
+                $fmtCoord = fn ($v) => ($v === null || $v === '') ? '' : rtrim(rtrim(number_format((float) $v, 6, '.', ''), '0'), '.');
+                $solHoje = \App\Services\AstronomiaService::sol();
+                ?>
+                <div class="col-12 mt-2">
+                    <label class="form-label small fw-bold d-block mb-1"><i class="bi bi-geo-alt me-1"></i>Localização da estação</label>
+                    <div class="form-text small mt-0 mb-2">
+                        Usada para calcular o nascer e o pôr do sol e para mostrar o índice UV só durante o dia.
+                        No Google Maps, clique com o botão direito no local da estação e copie os números
+                        (dá para colar os dois juntos no campo da latitude). Em branco, usa a Prefeitura Municipal de Pereira Barreto.
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold" for="latitudeInput">Latitude</label>
+                    <input type="text" inputmode="decimal" name="latitude" id="latitudeInput" class="form-control" value="<?= htmlspecialchars($fmtCoord($latSalva)) ?>" placeholder="<?= \App\Services\AstronomiaService::LATITUDE_PADRAO ?>">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-bold" for="longitudeInput">Longitude</label>
+                    <input type="text" inputmode="decimal" name="longitude" id="longitudeInput" class="form-control" value="<?= htmlspecialchars($fmtCoord($lonSalva)) ?>" placeholder="<?= \App\Services\AstronomiaService::LONGITUDE_PADRAO ?>">
+                </div>
+                <div class="col-md-4 d-flex align-items-end">
+                    <div class="small text-muted">
+                        Hoje: sol nasce às <strong><?= $solHoje['nascer'] ? date('H:i', $solHoje['nascer']) : '--' ?></strong>
+                        e se põe às <strong><?= $solHoje['por'] ? date('H:i', $solHoje['por']) : '--' ?></strong>.
+                        <?php if ($latSalva !== null && $latSalva !== '' && $lonSalva !== null && $lonSalva !== ''): ?>
+                            <a href="https://www.google.com/maps?q=<?= rawurlencode($fmtCoord($latSalva) . ',' . $fmtCoord($lonSalva)) ?>" target="_blank" rel="noopener">Ver no mapa</a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+
                 <div class="col-12">
                     <div class="alert alert-info small mb-0">
                         <i class="bi bi-info-circle me-1"></i>
@@ -137,5 +169,14 @@ document.getElementById('frequenciaInput').addEventListener('input', function ()
     const min = parseInt(this.value, 10) || 1;
     const chamadas = Math.floor(1440 / min);
     document.getElementById('chamadasDia').textContent = chamadas;
+});
+// colar "-20.6383, -51.1092" (como o Google Maps copia) no campo da latitude preenche os dois
+document.getElementById('latitudeInput').addEventListener('paste', function (e) {
+    const texto = (e.clipboardData || window.clipboardData).getData('text');
+    const partes = texto.match(/(-?\d+(?:\.\d+)?)\s*[,;\s]\s*(-?\d+(?:\.\d+)?)/);
+    if (!partes) return;
+    e.preventDefault();
+    this.value = partes[1];
+    document.getElementById('longitudeInput').value = partes[2];
 });
 </script>

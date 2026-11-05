@@ -230,8 +230,12 @@ async function fetchClimaAtual(local) {
         }
 
         if (uvEl && data.uv !== undefined) {
+            // o servidor diz se já amanheceu (coordenadas da estação): à noite o UV some da barra
+            const uvMetric = uvEl.closest('.topbar-metric');
+            const uvVisivel = data.uv_visivel !== false;
+            if (uvMetric) uvMetric.classList.toggle('d-none', !uvVisivel);
             uvEl.textContent = `UV: ${data.uv}`;
-            flash(uvEl);
+            if (uvVisivel) flash(uvEl);
         }
 
         // Home View specific metrics

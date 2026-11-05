@@ -859,3 +859,19 @@ html.a11y-contraste body .btn-close.btn-close:not([vw]):not([vw] *):not(img):not
     .mobile-navbar .navbar-a11y { gap: 3px; margin-left: 8px; }
     .mobile-navbar .navbar-a11y .a11y-btn { width: 28px; height: 28px; }
 }
+
+/* "Previsão hoje": nascer/pôr do sol e fase da lua */
+.forecast-astro {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 16px;
+    font-size: 0.8rem;
+    color: var(--text-secondary, #495057);
+    margin: 6px 0 10px;
+}
+.forecast-astro .bi-sunrise { color: #f59f00; }
+.forecast-astro .bi-sunset { color: #e8590c; }
+.forecast-astro .lua-emoji { display: inline-block; font-size: 1rem; line-height: 1; }
+/* os emojis da lua mostram o céu do hemisfério norte; no sul o lado iluminado é o oposto */
+.forecast-astro .lua-sul { transform: scaleX(-1); }
