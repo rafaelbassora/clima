@@ -928,3 +928,7 @@ html.a11y-contraste body .btn-close.btn-close:not([vw]):not([vw] *):not(img):not
     .astro-cal-num { padding-left: 3px; }
     .astro-lua-grande { font-size: 4.5rem; }
 }
+
+/* Vento hora a hora em um dia */
+.vento-seta{display:inline-block;margin-right:4px;color:var(--bs-primary)}
+.vento-dia-tabela td,.vento-dia-tabela th{white-space:nowrap}

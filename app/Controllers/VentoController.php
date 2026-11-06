@@ -22,6 +22,16 @@ class VentoController extends Controller
 
         $stats = $model->getEstatisticasVento($local);
 
+        // Vento hora a hora de um dia escolhido (padrão: hoje), entre o 1º dia com anemômetro e hoje
+        $hoje = date('Y-m-d');
+        $primeiroDia = $model->getPrimeiroDiaMedida($local, 'vento') ?? $hoje;
+        $dia = (string) $this->getParam('dia', $hoje);
+        $dt = \DateTime::createFromFormat('!Y-m-d', $dia);
+        if (!$dt || $dt->format('Y-m-d') !== $dia) {
+            $dia = $hoje;
+        }
+        $dia = max($primeiroDia, min($hoje, $dia));
+
         $data = [
             'pageTitle'    => 'Ventos',
             'local'        => $local,
@@ -31,6 +41,9 @@ class VentoController extends Controller
             'vento7dias'   => $model->getVento7Dias($local),
             'resumoMensal' => $model->getVentoResumo($local, $year, $month),
             'estatisticas' => $stats,
+            'dia'          => $dia,
+            'primeiroDia'  => $primeiroDia,
+            'ventoDia'     => $model->getVentoDoDia($local, $dia),
             'medias'       => $this->mediasDaMedida($model, 'vento', $local, $year, $month),
             'meses'        => $model->getMeses(),
             'activeMenu'   => 'vento',

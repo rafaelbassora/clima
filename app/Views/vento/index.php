@@ -64,6 +64,110 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
         </div>
     </div>
 
+    <!-- Vento hora a hora de um dia escolhido -->
+    <?php
+    $fmtVento = fn ($v) => $v === null ? '—' : number_format($v, 1, ',', '.');
+    $diaAnterior = date('Y-m-d', strtotime($dia . ' -1 day'));
+    $diaSeguinte = date('Y-m-d', strtotime($dia . ' +1 day'));
+    $linkDia = fn ($d) => '?' . http_build_query(['local' => $local, 'month' => $month, 'year' => $year, 'dia' => $d]) . '#vento-dia';
+    $rajadaDia = null;
+    foreach ($ventoDia as $h) {
+        if ($h['rajada'] !== null && ($rajadaDia === null || $h['rajada'] > $rajadaDia['rajada'])) {
+            $rajadaDia = $h;
+        }
+    }
+    $mediasDia = array_filter(array_column($ventoDia, 'media'), fn ($v) => $v !== null);
+    ?>
+    <div class="col-12" id="vento-dia">
+        <div class="weather-card fade-in-up">
+            <div class="card-header-custom">
+                <i class="bi bi-search"></i> Vento Hora a Hora em um Dia
+            </div>
+            <div class="card-body">
+                <form method="GET" action="#vento-dia" class="d-flex flex-wrap gap-2 align-items-end mb-3">
+                    <input type="hidden" name="local" value="<?= htmlspecialchars($local) ?>">
+                    <input type="hidden" name="month" value="<?= (int) $month ?>">
+                    <input type="hidden" name="year" value="<?= (int) $year ?>">
+                    <div>
+                        <label for="vento-dia-data" class="form-label small text-muted mb-1">Escolha o dia</label>
+                        <input type="date" id="vento-dia-data" name="dia" class="form-control form-control-sm"
+                               value="<?= htmlspecialchars($dia) ?>" min="<?= htmlspecialchars($primeiroDia) ?>" max="<?= date('Y-m-d') ?>" required>
+                    </div>
+                    <button type="submit" class="btn btn-sm btn-primary px-3"><i class="bi bi-search me-1"></i>Pesquisar</button>
+                    <div class="btn-group btn-group-sm ms-sm-auto" role="group" aria-label="Navegar entre os dias">
+                        <?php if ($dia > $primeiroDia): ?>
+                            <a class="btn btn-outline-secondary" href="<?= htmlspecialchars($linkDia($diaAnterior)) ?>"><i class="bi bi-chevron-left"></i> Dia anterior</a>
+                        <?php endif; ?>
+                        <?php if ($dia < date('Y-m-d')): ?>
+                            <a class="btn btn-outline-secondary" href="<?= htmlspecialchars($linkDia($diaSeguinte)) ?>">Próximo dia <i class="bi bi-chevron-right"></i></a>
+                        <?php endif; ?>
+                    </div>
+                </form>
+
+                <h5 class="h6 fw-bold mb-3"><?= date('d/m/Y', strtotime($dia)) ?><?= $dia === date('Y-m-d') ? ' <span class="badge bg-primary bg-opacity-10 text-primary">hoje, até agora</span>' : '' ?></h5>
+
+                <?php if (empty($ventoDia)): ?>
+                    <p class="text-muted text-center py-4 mb-0">Não há registros de vento neste dia.</p>
+                <?php else: ?>
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-4">
+                            <div class="p-2 border rounded text-center bg-light h-100">
+                                <div class="small text-muted">Média do dia</div>
+                                <div class="fw-bold fs-5"><?= $fmtVento($mediasDia ? array_sum($mediasDia) / count($mediasDia) : null) ?> <small class="fs-6 fw-normal">km/h</small></div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-4">
+                            <div class="p-2 border rounded text-center bg-light h-100">
+                                <div class="small text-muted">Maior rajada</div>
+                                <div class="fw-bold fs-5 text-accent-warm"><?= $fmtVento($rajadaDia['rajada'] ?? null) ?> <small class="fs-6 fw-normal">km/h</small></div>
+                                <?php if ($rajadaDia): ?><div class="small text-muted">às <?= htmlspecialchars($rajadaDia['hora_rajada'] ?? '--:--') ?><?= $rajadaDia['dir_rajada'] ? ', vindo de ' . htmlspecialchars($rajadaDia['dir_rajada']) : '' ?></div><?php endif; ?>
+                            </div>
+                        </div>
+                        <div class="col-12 col-md-4">
+                            <div class="p-2 border rounded text-center bg-light h-100">
+                                <div class="small text-muted">Horas com registro</div>
+                                <div class="fw-bold fs-5"><?= count($ventoDia) ?> <small class="fs-6 fw-normal">de 24</small></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table-weather table-sm table-hover vento-dia-tabela">
+                            <caption class="visually-hidden">Vento hora a hora em <?= date('d/m/Y', strtotime($dia)) ?></caption>
+                            <thead>
+                                <tr>
+                                    <th scope="col">Hora</th>
+                                    <th scope="col">Média</th>
+                                    <th scope="col">Rajada máx.</th>
+                                    <th scope="col">Horário da rajada</th>
+                                    <th scope="col">Direção da rajada</th>
+                                    <th scope="col">Direção predominante</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($ventoDia as $h): ?>
+                                <tr class="<?= ($h['rajada'] ?? 0) >= 40 ? 'bg-danger bg-opacity-10' : '' ?>">
+                                    <th scope="row" class="fw-normal"><?= $h['hora'] ?></th>
+                                    <td><?= $fmtVento($h['media']) ?> <small>km/h</small></td>
+                                    <td class="fw-bold text-accent-warm"><?= $fmtVento($h['rajada']) ?> <small>km/h</small></td>
+                                    <td class="small"><?= htmlspecialchars($h['hora_rajada'] ?? '—') ?></td>
+                                    <td><span class="badge bg-light text-dark border"><?= htmlspecialchars($h['dir_rajada'] ?? '—') ?></span></td>
+                                    <td>
+                                        <?php if ($h['graus_predominante'] !== null): ?>
+                                            <i class="bi bi-arrow-up vento-seta" style="transform: rotate(<?= ($h['graus_predominante'] + 180) % 360 ?>deg)" aria-hidden="true"></i>
+                                        <?php endif; ?>
+                                        <span class="badge bg-secondary bg-opacity-10 text-secondary"><?= htmlspecialchars($h['dir_predominante']) ?></span>
+                                    </td>
+                                </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <p class="small text-muted mb-0 mt-2">A direção indica de onde o vento vem (a seta aponta para onde ele sopra). Linhas em vermelho: rajadas a partir de 40 km/h.</p>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
     <!-- Gráfico/Tabela 24h -->
     <div class="col-lg-6">
         <div class="weather-card h-100 fade-in-up" style="transition-delay: 0.1s">
@@ -118,7 +222,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                             <tbody>
                                 <?php foreach ($resumoMensal as $row): ?>
                                 <tr class="<?= ($row['max_num'] ?? 0) >= 40 ? 'bg-danger bg-opacity-10' : '' ?>">
-                                    <td class="small"><?= $row['data'] ?></td>
+                                    <td class="small"><?php $iso = \DateTime::createFromFormat('!d/m/Y', $row['data'])->format('Y-m-d'); ?><a href="<?= htmlspecialchars($linkDia($iso)) ?>" title="Ver o vento hora a hora deste dia"><?= $row['data'] ?></a></td>
                                     <td><?= $row['avg'] ?> <small>km/h</small></td>
                                     <td class="fw-bold text-accent-warm"><?= $row['max'] ?> <small>km/h</small></td>
                                     <td><span class="badge bg-light text-dark border"><?= $row['direcao'] ?></span></td>

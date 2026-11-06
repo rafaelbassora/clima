@@ -369,6 +369,53 @@ class LeituraModel
 
 
     /**
+     * Vento hora a hora de um dia (Y-m-d): média, rajada máxima (com horário e direção)
+     * e direção predominante (média vetorial das direções). Dias passados ficam 30 dias em cache.
+     */
+    public function getVentoDoDia(string $local, string $dia): array
+    {
+        $ttl = $dia < date('Y-m-d') ? 2592000 : $this->getTtlHistorico();
+        return $this->cache->remember("vento_dia_v1_{$local}_{$dia}", $ttl, function () use ($local, $dia) {
+            $rows = $this->db->rawQuery(
+                "SELECT HOUR(created_at) AS h,
+                        AVG(wspd) AS wavg, MAX(COALESCE(wspdhi, wspd)) AS wmax,
+                        SUBSTRING_INDEX(GROUP_CONCAT(IF(COALESCE(wspdhi, wspd) IS NULL, NULL, CONCAT(DATE_FORMAT(created_at, '%H:%i'), '|', IFNULL(wdir, ''))) ORDER BY COALESCE(wspdhi, wspd) DESC, created_at ASC), ',', 1) AS wmax_info,
+                        SUM(IF(wdir IS NULL OR wspd IS NULL OR wspd = 0, 0, SIN(RADIANS(wdir)))) AS dsen,
+                        SUM(IF(wdir IS NULL OR wspd IS NULL OR wspd = 0, 0, COS(RADIANS(wdir)))) AS dcos,
+                        COUNT(wspd) AS n
+                 FROM leituras_completas FORCE INDEX (idx_resumo)
+                 WHERE local = ? AND created_at BETWEEN ? AND ?
+                 GROUP BY HOUR(created_at)
+                 ORDER BY h",
+                [$local, "{$dia} 00:00:00", "{$dia} 23:59:59"]
+            ) ?: [];
+
+            $horas = [];
+            foreach ($rows as $r) {
+                if ((int) $r['n'] === 0) {
+                    continue;
+                }
+                [$hw, $dw] = array_pad(explode('|', (string) $r['wmax_info']), 2, null);
+                $sen = (float) $r['dsen'];
+                $cos = (float) $r['dcos'];
+                $predominante = (abs($sen) < 1e-9 && abs($cos) < 1e-9)
+                    ? null
+                    : (int) round(fmod(rad2deg(atan2($sen, $cos)) + 360, 360));
+                $horas[] = [
+                    'hora' => sprintf('%02d:00', (int) $r['h']),
+                    'media' => $r['wavg'] !== null ? (float) $r['wavg'] / 10 * 3.6 : null,
+                    'rajada' => $r['wmax'] !== null ? (float) $r['wmax'] / 10 * 3.6 : null,
+                    'hora_rajada' => $hw ?: null,
+                    'dir_rajada' => ($dw !== null && $dw !== '') ? $this->getDirecaoVento((int) $dw) : null,
+                    'dir_predominante' => $predominante !== null ? $this->getDirecaoVento($predominante) : 'Calmo',
+                    'graus_predominante' => $predominante,
+                ];
+            }
+            return $horas;
+        });
+    }
+
+    /**
      * Vento dos últimos 7 dias (média e rajada máxima por dia), a partir do resumo diário.
      */
     public function getVento7Dias(string $local = '1'): array
