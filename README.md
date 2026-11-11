@@ -9,6 +9,8 @@ Criado originalmente pela Prefeitura da Estância Turística de Pereira Barreto
 (SP), em parceria com alunos da Univesp e o SAAE, e liberado aqui pra qualquer outra
 prefeitura adaptar e usar.
 
+**Veja funcionando:** [clima.pereirabarreto.sp.gov.br](https://clima.pereirabarreto.sp.gov.br) — site oficial da Prefeitura de Pereira Barreto.
+
 ## Funcionalidades
 
 - **Painel público**: temperatura, umidade, pressão, vento, chuva, radiação
