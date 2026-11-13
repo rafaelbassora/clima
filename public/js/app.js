@@ -279,13 +279,13 @@ async function fetchClimaAtual(local) {
             const [status, colorClass] =
                 umid <= 12 ? ['EMERGÊNCIA', 'text-danger'] :
                 umid <= 20 ? ['ALERTA', 'text-danger'] :
-                umid <= 30 ? ['ATENÇÃO', 'text-warning'] :
-                umid < 40  ? ['SECO', 'text-warning'] :
+                umid <= 30 ? ['ATENÇÃO', 'text-ambar'] :
+                umid < 40  ? ['SECO', 'text-ambar'] :
                 umid <= 60 ? ['IDEAL', 'text-success'] :
                              ['ÚMIDO', 'text-primary'];
             
             // Remover classes de cor antigas e adicionar a nova
-            homeUmidadePainel.classList.remove('text-success', 'text-primary', 'text-warning', 'text-danger');
+            homeUmidadePainel.classList.remove('text-success', 'text-primary', 'text-warning', 'text-ambar', 'text-danger');
             homeUmidadePainel.classList.add(colorClass);
             
             homeUmidadePainel.innerHTML = `${umid}% <span style="font-size: 0.6rem; opacity: 0.8; font-weight: 500;" id="home-umidade-status">${status}</span>`;

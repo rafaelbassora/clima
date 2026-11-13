@@ -179,7 +179,7 @@
             <?php if (!empty($filtrado) && $ratingFiltro !== null): ?>
                 <div>
                     Rating deste filtro:
-                    <strong class="<?= $ratingFiltro >= 70 ? 'text-success' : ($ratingFiltro >= 50 ? 'text-warning' : 'text-danger') ?>"><?= number_format($ratingFiltro, 1, ',', '.') ?>%</strong>
+                    <strong class="<?= $ratingFiltro >= 70 ? 'text-success' : ($ratingFiltro >= 50 ? 'text-ambar' : 'text-danger') ?>"><?= number_format($ratingFiltro, 1, ',', '.') ?>%</strong>
                     <span class="text-muted">(<?= number_format((int) $rf['acertos'], 0, ',', '.') ?> acertos de <?= number_format($validadosFiltro, 0, ',', '.') ?>)</span>
                 </div>
             <?php endif; ?>

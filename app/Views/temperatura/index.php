@@ -147,10 +147,10 @@ $tiles = $mr ? [
                     <?php foreach ($estatisticasAno['calor'] as $i => $item): ?>
                     <div class="d-flex align-items-center justify-content-between p-3 mb-2 rounded bg-light bg-opacity-10 border-start border-4 border-warning">
                         <div>
-                            <span class="fw-bold text-warning">#<?= $i+1 ?></span>
+                            <span class="fw-bold text-ambar">#<?= $i+1 ?></span>
                             <span class="ms-2 text-muted small"><i class="bi bi-clock"></i> <?= $item['data'] ?></span>
                         </div>
-                        <div class="fs-4 fw-bold text-warning"><?= $item['valor'] ?>°C</div>
+                        <div class="fs-4 fw-bold text-ambar"><?= $item['valor'] ?>°C</div>
                     </div>
                     <?php endforeach; ?>
                 <?php else: ?>

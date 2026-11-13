@@ -932,3 +932,6 @@ html.a11y-contraste body .btn-close.btn-close:not([vw]):not([vw] *):not(img):not
 /* Vento hora a hora em um dia */
 .vento-seta{display:inline-block;margin-right:4px;color:var(--bs-primary)}
 .vento-dia-tabela td,.vento-dia-tabela th{white-space:nowrap}
+
+/* Amarelo legível em fundo claro (o .text-warning do Bootstrap dá contraste 1,6:1 no branco; este dá 5,6:1) */
+.text-ambar{color:#9a5800!important}

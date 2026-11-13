@@ -245,7 +245,7 @@
                             $pos = 1;
                             foreach ($estatisticas['top_chuva'] as $top): 
                                 $medal = '';
-                                if ($pos == 1) $medal = 'text-warning';
+                                if ($pos == 1) $medal = 'text-ambar';
                                 else if ($pos == 2) $medal = 'text-secondary';
                                 else if ($pos == 3) $medal = 'text-danger opacity-75';
                             ?>

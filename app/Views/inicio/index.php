@@ -99,8 +99,8 @@ $localNome = match($local) {
             [$umidStatus, $umidColor] = match (true) {
                 $umid <= 12 => ['EMERGÊNCIA', 'text-danger'],
                 $umid <= 20 => ['ALERTA', 'text-danger'],
-                $umid <= 30 => ['ATENÇÃO', 'text-warning'],
-                $umid < 40  => ['SECO', 'text-warning'],
+                $umid <= 30 => ['ATENÇÃO', 'text-ambar'],
+                $umid < 40  => ['SECO', 'text-ambar'],
                 $umid <= 60 => ['IDEAL', 'text-success'],
                 default     => ['ÚMIDO', 'text-primary'],
             };
