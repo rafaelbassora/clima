@@ -100,6 +100,8 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
         </div>
     </div>
 
+    <?php $tipoDia = 'pressao'; require __DIR__ . '/../partials/medida-do-dia.php'; ?>
+
     <!-- Tendência 24h -->
     <div class="col-lg-6">
         <div class="weather-card h-100 fade-in-up" style="transition-delay: 0.1s">
@@ -133,7 +135,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
     <div class="col-lg-6">
         <div class="weather-card h-100 fade-in-up" style="transition-delay: 0.2s">
             <div class="card-header-custom">
-                <i class="bi bi-calendar3"></i> Médias de <?= date('F/Y', mktime(0,0,0,$month,1,$year)) ?>
+                <i class="bi bi-calendar3"></i> Médias de <?= htmlspecialchars($meses[$month] ?? '') ?>/<?= (int) $year ?>
             </div>
             <div class="card-body">
                 <?php if (empty($resumoMensal)): ?>
@@ -151,7 +153,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                             <tbody>
                                 <?php foreach ($resumoMensal as $row): ?>
                                 <tr class="<?= ($row['max_num'] ?? 0) >= 1020 ? 'bg-danger bg-opacity-10' : (($row['min_num'] ?? 9999) <= 1005 ? 'bg-primary bg-opacity-10' : '') ?>">
-                                    <td class="small"><?= $row['data'] ?></td>
+                                    <td class="small"><?php $iso = \DateTime::createFromFormat('!d/m/Y', $row['data'])->format('Y-m-d'); ?><a href="?<?= htmlspecialchars(http_build_query(['local' => $local, 'month' => $month, 'year' => $year, 'dia' => $iso])) ?>#medida-dia" title="Ver hora a hora deste dia"><?= htmlspecialchars($row['data']) ?></a></td>
                                     <td class="text-primary fw-bold"><?= $row['min'] ?></td>
                                     <td class="text-accent-warm fw-bold"><?= $row['max'] ?></td>
                                 </tr>

@@ -19,6 +19,7 @@ class PressaoController extends Controller
         }
 
         $model = new LeituraModel();
+        [$dia, $primeiroDia] = $this->diaPesquisado($model, 'pressao', $local);
 
         $data = [
             'pageTitle'    => 'Pressão Atmosférica',
@@ -32,6 +33,9 @@ class PressaoController extends Controller
             'medias'       => $this->mediasDaMedida($model, 'pressao', $local, $year, $month),
             'meses'        => $model->getMeses(),
             'activeMenu'   => 'pressao',
+            'dia'         => $dia,
+            'primeiroDia' => $primeiroDia,
+            'medidasDia'  => $model->getMedidasDoDia($local, $dia),
         ];
 
         $this->view('pressao/index', $data);

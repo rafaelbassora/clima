@@ -18,6 +18,7 @@ class UmidadeController extends Controller
             $month = (int) date('n');
         }
         $model = new LeituraModel();
+        [$dia, $primeiroDia] = $this->diaPesquisado($model, 'umidade', $local);
 
         $data = [
             'pageTitle'  => 'Umidade',
@@ -29,6 +30,9 @@ class UmidadeController extends Controller
             'medias'       => $this->mediasDaMedida($model, 'umidade', $local, $year, $month),
             'meses'        => $model->getMeses(),
             'activeMenu'   => 'umidade',
+            'dia'         => $dia,
+            'primeiroDia' => $primeiroDia,
+            'medidasDia'  => $model->getMedidasDoDia($local, $dia),
         ];
 
         $this->view('umidade/index', $data);

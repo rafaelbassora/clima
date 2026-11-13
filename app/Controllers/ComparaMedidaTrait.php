@@ -25,6 +25,22 @@ trait ComparaMedidaTrait
         return $medias;
     }
 
+    /**
+     * Dia escolhido na pesquisa "hora a hora" (?dia=Y-m-d): data inválida volta pra hoje e
+     * fica entre o 1º dia com a medida e hoje. Retorna [dia, primeiroDia].
+     */
+    protected function diaPesquisado(LeituraModel $model, string $medida, string $local): array
+    {
+        $hoje = date('Y-m-d');
+        $primeiroDia = (new ComparacaoMedidaService($model, $medida))->primeiroDia($local) ?? $hoje;
+        $dia = (string) $this->getParam('dia', $hoje);
+        $dt = \DateTime::createFromFormat('!Y-m-d', $dia);
+        if (!$dt || $dt->format('Y-m-d') !== $dia) {
+            $dia = $hoje;
+        }
+        return [max($primeiroDia, min($hoje, $dia)), $primeiroDia];
+    }
+
     protected function compararMedida(string $medida, string $activeMenu): void
     {
         $local = in_array($this->getParam('local', '1'), ['1', '2', '3', '4'], true) ? $this->getParam('local', '1') : '1';

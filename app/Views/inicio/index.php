@@ -93,19 +93,17 @@ $localNome = match($local) {
             <strong id="home-sensacao" class="text-accent-warm"><?= number_format($ultimaLeitura['sensacao'] ?? 0, 1, ',', '.') ?>°C</strong>
         </div>
         <?php
+            // Faixas: Defesa Civil/CGE (atenção ≤ 30%, alerta ≤ 20%, emergência ≤ 12%) e 40–60% como faixa saudável.
+            // Mesma regra em public/js/app.js (classificarUmidade) — mudar nos dois.
             $umid = $ultimaLeitura['umidade'] ?? 0;
-            $umidStatus = 'PERIGO';
-            $umidColor  = 'text-danger';
-            if ($umid > 60) {
-                $umidStatus = 'BOA';
-                $umidColor  = 'text-success';
-            } elseif ($umid > 30) {
-                $umidStatus = 'REGULAR';
-                $umidColor  = 'text-primary';
-            } elseif ($umid > 20) {
-                $umidStatus = 'ATENÇÃO';
-                $umidColor  = 'text-warning';
-            }
+            [$umidStatus, $umidColor] = match (true) {
+                $umid <= 12 => ['EMERGÊNCIA', 'text-danger'],
+                $umid <= 20 => ['ALERTA', 'text-danger'],
+                $umid <= 30 => ['ATENÇÃO', 'text-warning'],
+                $umid < 40  => ['SECO', 'text-warning'],
+                $umid <= 60 => ['IDEAL', 'text-success'],
+                default     => ['ÚMIDO', 'text-primary'],
+            };
         ?>
         <div class="forecast-extra-item">
             <small title="Umidade Relativa" style="cursor:help;">UMIDADE</small>

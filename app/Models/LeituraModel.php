@@ -416,6 +416,65 @@ class LeituraModel
     }
 
     /**
+     * Umidade, pressão e evapotranspiração hora a hora de um dia (Y-m-d), numa consulta só.
+     * Retorna [hora (0-23) => [
+     *   'hmin','hmax','havg','hhmin','hhmax'  umidade (%) mín/máx/média e horário (H:i) do mín/máx
+     *   'bmin','bmax','bavg','hbmin','hbmax'  pressão (hPa), idem — só depois de ATIVACAO_BAROMETRO
+     *   'et'                                  evapotranspiração da hora (mm), null sem leitura
+     * ]]
+     * O ET usa o mesmo cálculo do resumo diário (taxa × tempo até a leitura seguinte), então a soma
+     * das horas bate com o total do dia. Dias passados ficam 30 dias em cache.
+     */
+    public function getMedidasDoDia(string $local, string $dia): array
+    {
+        $ttl = $dia < date('Y-m-d') ? 2592000 : $this->getTtlHistorico();
+        return $this->cache->remember("medidas_dia_v1_{$local}_{$dia}", $ttl, function () use ($local, $dia) {
+            $fimDia = "{$dia} 23:59:59";
+            // vai até a 1ª hora do dia seguinte só pra última leitura do dia ter a "leitura seguinte" do ET
+            $fimJanela = date('Y-m-d 00:59:59', strtotime("{$dia} +1 day"));
+            $rows = $this->db->rawQuery(
+                "SELECT HOUR(created_at) AS h,
+                        MIN(NULLIF(hum, 0)) AS hmin, MAX(NULLIF(hum, 0)) AS hmax, AVG(NULLIF(hum, 0)) AS havg,
+                        SUBSTRING_INDEX(GROUP_CONCAT(IF(NULLIF(hum, 0) IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY hum ASC, created_at ASC), ',', 1) AS hhmin,
+                        SUBSTRING_INDEX(GROUP_CONCAT(IF(NULLIF(hum, 0) IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY hum DESC, created_at ASC), ',', 1) AS hhmax,
+                        MIN(b) AS bmin, MAX(b) AS bmax, AVG(b) AS bavg,
+                        SUBSTRING_INDEX(GROUP_CONCAT(IF(b IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY b ASC, created_at ASC), ',', 1) AS hbmin,
+                        SUBSTRING_INDEX(GROUP_CONCAT(IF(b IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY b DESC, created_at ASC), ',', 1) AS hbmax,
+                        SUM(et * diff_seg / 36000) AS et_mm, SUM(et IS NOT NULL) AS et_n
+                 FROM (
+                     SELECT created_at, hum, et,
+                            IF(bar > 0 AND created_at >= ?, bar, NULL) AS b,
+                            TIMESTAMPDIFF(SECOND, created_at, LEAD(created_at) OVER (ORDER BY created_at)) AS diff_seg
+                     FROM leituras_completas FORCE INDEX (idx_resumo)
+                     WHERE local = ? AND created_at BETWEEN ? AND ?
+                 ) t
+                 WHERE created_at <= ?
+                 GROUP BY HOUR(created_at)
+                 ORDER BY h",
+                [self::ATIVACAO_BAROMETRO, $local, "{$dia} 00:00:00", $fimJanela, $fimDia]
+            ) ?: [];
+
+            $horas = [];
+            foreach ($rows as $r) {
+                $horas[(int) $r['h']] = [
+                    'hmin' => $r['hmin'] !== null ? (int) $r['hmin'] : null,
+                    'hmax' => $r['hmax'] !== null ? (int) $r['hmax'] : null,
+                    'havg' => $r['havg'] !== null ? (float) $r['havg'] : null,
+                    'hhmin' => $r['hhmin'] ?: null,
+                    'hhmax' => $r['hhmax'] ?: null,
+                    'bmin' => $r['bmin'] !== null ? (int) $r['bmin'] / 10 : null,
+                    'bmax' => $r['bmax'] !== null ? (int) $r['bmax'] / 10 : null,
+                    'bavg' => $r['bavg'] !== null ? (float) $r['bavg'] / 10 : null,
+                    'hbmin' => $r['hbmin'] ?: null,
+                    'hbmax' => $r['hbmax'] ?: null,
+                    'et' => (int) $r['et_n'] > 0 && $r['et_mm'] !== null ? (float) $r['et_mm'] : null,
+                ];
+            }
+            return $horas;
+        });
+    }
+
+    /**
      * Vento dos últimos 7 dias (média e rajada máxima por dia), a partir do resumo diário.
      */
     public function getVento7Dias(string $local = '1'): array

@@ -21,6 +21,7 @@ class EtController extends Controller
         }
 
         $model = new LeituraModel();
+        [$dia, $primeiroDia] = $this->diaPesquisado($model, 'et', $local);
 
         $etResumo = $model->getEtResumo($local, $year, $month);
 
@@ -33,6 +34,9 @@ class EtController extends Controller
             'medias'     => $this->mediasDaMedida($model, 'et', $local, $year, $month),
             'meses'      => $model->getMeses(),
             'activeMenu' => 'et',
+            'dia'         => $dia,
+            'primeiroDia' => $primeiroDia,
+            'medidasDia'  => $model->getMedidasDoDia($local, $dia),
         ];
 
         $this->view('et/index', $data);

@@ -40,6 +40,8 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
 <?php require __DIR__ . '/../partials/medias-medida.php'; ?>
 
 <div class="row g-3">
+    <?php $tipoDia = 'umidade'; require __DIR__ . '/../partials/medida-do-dia.php'; ?>
+
     <!-- Card 1: Últimas 24h -->
     <div class="col-md-6">
         <div class="weather-card fade-in-up">
@@ -90,7 +92,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                         <tbody>
                             <?php foreach ($resumoMensal as $row): ?>
                             <tr>
-                                <td><?= htmlspecialchars($row['data']) ?></td>
+                                <td><?php $iso = \DateTime::createFromFormat('!d/m/Y', $row['data'])->format('Y-m-d'); ?><a href="?<?= htmlspecialchars(http_build_query(['local' => $local, 'month' => $month, 'year' => $year, 'dia' => $iso])) ?>#medida-dia" title="Ver hora a hora deste dia"><?= htmlspecialchars($row['data']) ?></a></td>
                                 <td class="text-primary"><?= htmlspecialchars($row['min']) ?>%</td>
                                 <td class="text-accent-warm fw-bold"><?= htmlspecialchars($row['max']) ?>%</td>
                             </tr>
