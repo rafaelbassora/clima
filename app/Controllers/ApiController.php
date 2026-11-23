@@ -151,18 +151,19 @@ class ApiController extends Controller
         
         $minutos = (int)$this->getParam('minutos', 180);
 
-        // Só expressa em horas quando dá uma hora "redonda" (sem decimais tipo "1.5 horas"
-        // ou mistura errada de gênero tipo "as próximas 90 minutos"); caso contrário usa minutos.
+        // Só expressa em horas quando dá uma hora "redonda" (sem decimais tipo "1.5 horas");
+        // caso contrário usa minutos. Ex.: "Chuva provável nas próximas 3 horas".
         if ($minutos >= 60 && $minutos % 60 === 0) {
             $horas = (int) ($minutos / 60);
-            $textoTempo = $horas === 1 ? "hora" : "{$horas} horas";
-            $preposicao = $horas === 1 ? 'a próxima' : 'as próximas';
+            $prazo = $horas === 1 ? 'na próxima hora' : "nas próximas {$horas} horas";
         } else {
-            $textoTempo = $minutos === 1 ? "minuto" : "{$minutos} minutos";
-            $preposicao = $minutos === 1 ? 'o próximo' : 'os próximos';
+            $prazo = $minutos === 1 ? 'no próximo minuto' : "nos próximos {$minutos} minutos";
         }
 
-        $mensagemCompleta = "{$tendencia} para {$preposicao} {$textoTempo}";
+        // Situação atual ("Chovendo agora") não leva prazo; só previsão leva.
+        $mensagemCompleta = !empty($resTendencia['agora'])
+            ? $tendencia
+            : "{$tendencia} {$prazo}";
         
         $success = $model->saveNowcasting($local, $mensagemCompleta, $minutos, $tipo, $resTendencia);
 
@@ -290,7 +291,7 @@ class ApiController extends Controller
             // Se não tiver previsão ou a previsão não for chuva (ex: firme, melhoria)
             if (!$latest || $latest['tipo_previsao'] !== 'chuva') {
                 $minutos = 60; // Duração do alerta do circuit breaker
-                $mensagem = "Chovendo no momento";
+                $mensagem = "Chovendo agora";
                 
                 $success = $model->saveNowcasting($local, $mensagem, $minutos, 'chuva');
                 

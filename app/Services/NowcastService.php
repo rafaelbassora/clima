@@ -70,18 +70,19 @@ class NowcastService
             $diferencaOrvalho = $tempAtual - $orvalhoAtual;
 
             if ($rainAtual < $rainAnterior && $taxaPressao > 0.5) {
-                return ['mensagem' => "Instabilidade perdendo intensidade", 'tipo' => 'melhoria'];
+                return ['mensagem' => "Chovendo agora, com a chuva perdendo força", 'tipo' => 'melhoria', 'agora' => true];
             }
 
             if ($diferencaOrvalho > 3.0) {
-                return ['mensagem' => "Chuva em fase final", 'tipo' => 'melhoria'];
+                return ['mensagem' => "Chovendo agora, mas a chuva deve parar logo", 'tipo' => 'melhoria', 'agora' => true];
             }
 
-            return ['mensagem' => "Chovendo no momento", 'tipo' => 'chuva'];
+            // 'agora': descreve o que está acontecendo, não previsão — vai sem prazo ("na próxima hora")
+            return ['mensagem' => "Chovendo agora", 'tipo' => 'chuva', 'agora' => true];
         }
 
         if ($chuvaRecente) {
-            return ['mensagem' => "Céu com muitas nuvens", 'tipo' => 'chuva'];
+            return ['mensagem' => "Choveu há pouco e o céu continua carregado", 'tipo' => 'chuva', 'agora' => true];
         }
 
         // =========================
@@ -121,11 +122,11 @@ class NowcastService
         // =========================
 
         if ($score >= $this->limiarAlta) {
-            $mensagem = "Alta probabilidade de chuva";
+            $mensagem = "Chuva provável";
         } elseif ($score >= $this->limiarModerada) {
-            $mensagem = "Chance moderada de chuva";
+            $mensagem = "Pode chover";
         } elseif ($score >= $this->limiarBaixa) {
-            $mensagem = "Baixa chance de chuva";
+            $mensagem = "Pouca chance de chuva";
         } else {
             return ['mensagem' => "Tempo firme", 'tipo' => 'firme'];
         }
