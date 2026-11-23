@@ -151,6 +151,46 @@ $chamadasPorDia = $frequencia > 0 ? (int) floor(1440 / $frequencia) : 0;
 <div class="weather-card">
     <div class="card-body p-4">
         <h3 class="h6 fw-bold mb-2">Status</h3>
+        <?php if (!empty($monitor)): ?>
+            <?php
+                $min = $monitor['minutos'];
+                $haQuanto = $min === null ? '' : ($min < 60 ? "há {$min} min" : 'há ' . intdiv($min, 60) . ' h ' . ($min % 60) . ' min');
+                $bat = $monitor['bateria'];
+            ?>
+            <p class="small mb-1">
+                Última leitura recebida:
+                <strong><?= $monitor['ultima'] ? date('d/m/Y H:i', strtotime($monitor['ultima'])) : 'nenhuma' ?></strong>
+                <span class="text-muted"><?= $haQuanto ?></span>
+                <?php if ($monitor['offline']): ?>
+                    <span class="badge bg-danger ms-1">Sem dados</span>
+                <?php else: ?>
+                    <span class="badge bg-success ms-1">Recebendo</span>
+                <?php endif; ?>
+            </p>
+            <p class="small mb-1">
+                Bateria informada pela estação:
+                <?php if ($bat === null || $bat === ''): ?>
+                    <strong class="text-muted">não informada</strong>
+                <?php elseif (strtolower($bat) === 'ok'): ?>
+                    <strong class="text-success">ok</strong>
+                <?php else: ?>
+                    <strong class="text-danger"><?= htmlspecialchars($bat) ?> — trocar as pilhas</strong>
+                <?php endif; ?>
+                <span class="text-muted">(o indicador da estação não avisou antes da pilha acabar em 22/11/2026, então não dá pra confiar só nele)</span>
+            </p>
+            <p class="small mb-2 text-muted">
+                Alerta por e-mail: depois de <?= (int) $monitor['limite'] ?> min sem dados, quando a estação voltar e se a bateria sair de "ok"
+                — enviado para <?= (int) $monitor['destinos'] ?> administrador<?= $monitor['destinos'] == 1 ? '' : 'es' ?>.
+                <?php if ($monitor['estado']['offline'] && $monitor['estado']['avisado_em']): ?>
+                    Último aviso: <?= date('d/m/Y H:i', strtotime($monitor['estado']['avisado_em'])) ?>.
+                <?php endif; ?>
+            </p>
+            <p class="small mb-2 text-muted">
+                Failover automático: estação local → API Wunderground (após 5 min sem dado local, se a chave estiver configurada).
+                Nada é estimado: se a estação parar de verdade, o período fica como falha e o dia aparece como "incompleto" no site.
+                Volta sozinho para a estação quando ela mandar dados.
+            </p>
+        <?php endif; ?>
         <p class="small mb-1">
             Fonte ativa agora: <strong><?= $estacaoConfig['fonte_dados'] === 'wunderground' ? 'API Wunderground' : 'Local' ?></strong>
         </p>

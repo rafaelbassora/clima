@@ -222,7 +222,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                             <tbody>
                                 <?php foreach ($resumoMensal as $row): ?>
                                 <tr class="<?= ($row['max_num'] ?? 0) >= 40 ? 'bg-danger bg-opacity-10' : '' ?>">
-                                    <td class="small"><?php $iso = \DateTime::createFromFormat('!d/m/Y', $row['data'])->format('Y-m-d'); ?><a href="<?= htmlspecialchars($linkDia($iso)) ?>" title="Ver o vento hora a hora deste dia"><?= $row['data'] ?></a></td>
+                                    <td class="small"><?php $olhoData = $row['data']; $olhoMedida = 'o vento'; $olhoAncora = 'vento-dia'; require __DIR__ . '/../partials/olho-dia.php'; ?></td>
                                     <td><?= $row['avg'] ?> <small>km/h</small></td>
                                     <td class="fw-bold text-accent-warm"><?= $row['max'] ?> <small>km/h</small></td>
                                     <td><span class="badge bg-light text-dark border"><?= $row['direcao'] ?></span></td>

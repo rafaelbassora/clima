@@ -44,12 +44,12 @@ class LeituraModel
      */
     public function getUltimaLeitura(string $local = '1'): ?array
     {
-        return $this->cache->remember("ultima_leitura_v4_{$local}", $this->ttlRapido, function () use ($local) {
+        $leitura = $this->cache->remember("ultima_leitura_v7_{$local}", $this->ttlRapido, function () use ($local) {
+            // AVG(wspd) sem COALESCE: leitura sem vento (NULL) não puxa a média pra baixo.
             $result = $this->db->rawQueryOne(
                 "SELECT l.temp, l.hum, l.bar, l.wspd, l.wspdhi, l.wdir, l.solarrad, l.uvi, l.dew, l.heat, l.rainrate, l.created_at, l.local,
-                        (SELECT MAX(rain) FROM leituras_completas WHERE local = l.local AND DATE(created_at) = DATE(l.created_at)) as rain_today,
                         (SELECT MAX(COALESCE(wspdhi, wspd, 0)) FROM leituras_completas WHERE local = l.local AND DATE(created_at) = DATE(l.created_at)) as vento_max_today,
-                        (SELECT AVG(COALESCE(wspd, 0)) FROM leituras_completas WHERE local = l.local AND DATE(created_at) = DATE(l.created_at)) as vento_avg_today
+                        (SELECT AVG(wspd) FROM leituras_completas WHERE local = l.local AND DATE(created_at) = DATE(l.created_at)) as vento_avg_today
                  FROM leituras_completas l
                  WHERE l.local = ?
                  ORDER BY l.created_at DESC
@@ -63,9 +63,11 @@ class LeituraModel
 
             $hoje = date('Y-m-d', strtotime($result['created_at'] ?? 'now'));
             $correcaoHoje = $this->chuvaCorrecao->getValor($local, $hoje) ?? 0;
-            $chuvaDia = round((float) (($result['rain_today'] ?? 0) / 10) + $correcaoHoje, 2);
+            $chuvaHoje = $this->chuvaIncrementosPorDia((string) $result['local'], $hoje, $hoje)[$hoje] ?? 0;
+            $chuvaDia = round(max(0, $chuvaHoje / 10 + $correcaoHoje), 2);
 
             return [
+                'criado_em' => $result['created_at'],
                 'temperatura' => round(($result['temp'] ?? 0) / 10, 1),
                 'umidade' => (int) ($result['hum'] ?? 0),
                 'barometro' => number_format((float) (($result['bar'] ?? 0) / 10), 1, ',', '.'),
@@ -87,6 +89,127 @@ class LeituraModel
                 'local' => $result['local'] ?? $local,
             ];
         });
+        if ($leitura) {
+            // Fora do cache: a estação está sem mandar dados há 30 min ou mais (aviso na página inicial).
+            $leitura['sem_dados'] = time() - strtotime($leitura['criado_em']) >= 30 * 60;
+        }
+        return $leitura;
+    }
+
+    /**
+     * Chuva automática por dia, em décimos de mm: [Y-m-d => décimos].
+     *
+     * Soma o quanto o contador da estação SUBIU entre uma leitura e a seguinte, em vez de pegar o
+     * MAX do dia. Assim:
+     *  - a zerada do console (às 23h, não à meia-noite) não joga a chuva das 23h–24h pro dia seguinte;
+     *  - salto depois de falha > 30 min não conta (ex.: 23/11/2026 o console voltou da troca de pilha
+     *    com 31,8 mm de 21/11 na memória) — não dá pra saber quando aquela chuva caiu;
+     *  - salto acima de 5 mm por minuto não conta (defeito da estação às 23:59 em 13/04 e 13/06/2026:
+     *    contador 0 → 35/85 mm em 1 minuto, sem chuva).
+     * Validado contra simulação em PHP em todos os dias desde 13/04/2026 (iguais em 221 de 225 dias;
+     * os 4 diferentes são exatamente os defeitos acima).
+     */
+    private function chuvaIncrementosPorDia(string $local, string $inicio, string $fim, string $automatic = '1'): array
+    {
+        // Começa 1 h antes pra primeira leitura do período ter a anterior com que comparar.
+        $buscaIni = date('Y-m-d H:i:s', strtotime("{$inicio} 00:00:00") - 3600);
+        $rows = $this->db->rawQuery(
+            "SELECT dia, SUM(inc) AS chuva FROM (
+                SELECT DATE(created_at) AS dia,
+                       CASE WHEN prev_t IS NULL OR TIMESTAMPDIFF(SECOND, prev_t, created_at) > 1800 THEN 0
+                            WHEN rain >= prev_r THEN rain - prev_r
+                            ELSE rain END AS inc,
+                       GREATEST(1, TIMESTAMPDIFF(SECOND, prev_t, created_at) / 60) AS minutos
+                FROM (
+                    SELECT created_at, rain,
+                           LAG(rain) OVER (ORDER BY created_at) AS prev_r,
+                           LAG(created_at) OVER (ORDER BY created_at) AS prev_t
+                    FROM leituras_completas FORCE INDEX (idx_chuva_auto)
+                    WHERE local = ? AND automatic = ? AND rain IS NOT NULL AND created_at BETWEEN ? AND ?
+                ) x
+            ) y
+            WHERE inc <= 50 * COALESCE(minutos, 1) AND dia BETWEEN ? AND ?
+            GROUP BY dia
+            ORDER BY dia",
+            [$local, $automatic, $buscaIni, "{$fim} 23:59:59", $inicio, $fim]
+        );
+        $dias = [];
+        foreach ($rows as $row) {
+            $dias[$row['dia']] = (int) $row['chuva'];
+        }
+        return $dias;
+    }
+
+    /**
+     * Quantas horas (0–24) de cada dia têm pelo menos uma leitura da estação: ['Y-m-d' => horas].
+     * Dia anterior a hoje com menos de 24 horas = "dia incompleto" (estação ficou sem dados).
+     */
+    public function getHorasComDadosPorDia(string $local, string $inicio, string $fim): array
+    {
+        // Um cache por mês (mês passado não muda: 30 dias), pra visão do ano não recontar tudo a cada 3 min.
+        $dias = [];
+        $mesAtual = date('Y-m');
+        $cursor = new \DateTime(substr($inicio, 0, 7) . '-01');
+        $limite = new \DateTime($fim);
+        while ($cursor <= $limite) {
+            $ym = $cursor->format('Y-m');
+            $s = $cursor->format('Y-m-01 00:00:00');
+            $e = $cursor->format('Y-m-t 23:59:59');
+            $ttl = $ym < $mesAtual ? 2592000 : $this->getTtlHistorico();
+            $dias += $this->cache->remember("horas_com_dados_v2_{$local}_{$ym}", $ttl, function () use ($local, $s, $e) {
+                $mes = [];
+                foreach ($this->db->rawQuery(
+                    "SELECT DATE(created_at) AS dia, COUNT(DISTINCT HOUR(created_at)) AS horas
+                     FROM leituras_completas
+                     WHERE local = ? AND created_at BETWEEN ? AND ?
+                     GROUP BY DATE(created_at)",
+                    [$local, $s, $e]
+                ) as $r) {
+                    $mes[$r['dia']] = (int) $r['horas'];
+                }
+                return $mes;
+            });
+            $cursor->modify('first day of next month');
+        }
+        return array_filter($dias, fn ($dia) => $dia >= $inicio && $dia <= $fim, ARRAY_FILTER_USE_KEY);
+    }
+
+    /** Dia (anterior a hoje) em que a estação ficou sem dados em alguma hora. */
+    public function diaIncompleto(string $local, string $dia): bool
+    {
+        if ($dia >= date('Y-m-d')) {
+            return false;
+        }
+        $mes = substr($dia, 0, 7);
+        $horas = $this->getHorasComDadosPorDia($local, "{$mes}-01", date('Y-m-t', strtotime("{$mes}-01")));
+        return ($horas[$dia] ?? 0) < 24;
+    }
+
+    /**
+     * Previsão do INMET (tabela previsoes, gravada pelo cron/previsao-inmet.php) para cada dia do período:
+     * ['Y-m-d' => ['max' => int, 'min' => int]] — a última previsão emitida até o próprio dia.
+     * Só para referência em dia incompleto: é PREVISÃO, nunca é mostrada como medição.
+     */
+    public function getPrevisaoInmetPorDia(string $local, string $inicio, string $fim): array
+    {
+        $ttl = $fim < date('Y-m-d') ? 2592000 : $this->getTtlHistorico();
+        return $this->cache->remember("previsao_inmet_dia_v1_{$local}_{$inicio}_{$fim}", $ttl, function () use ($local, $inicio, $fim) {
+            $dias = [];
+            foreach ($this->db->rawQuery(
+                "SELECT p.dia, p.maxima, p.minima
+                 FROM previsoes p
+                 JOIN (SELECT dia, MAX(data) AS ultima FROM previsoes
+                       WHERE local = ? AND dia BETWEEN ? AND ? AND atualizacao <= dia
+                       GROUP BY dia) u ON u.dia = p.dia AND u.ultima = p.data
+                 WHERE p.local = ?",
+                [$local, $inicio, $fim, $local]
+            ) as $r) {
+                if ($r['maxima'] !== null && $r['minima'] !== null) {
+                    $dias[$r['dia']] = ['max' => (int) $r['maxima'], 'min' => (int) $r['minima']];
+                }
+            }
+            return $dias;
+        });
     }
 
     /**
@@ -94,17 +217,23 @@ class LeituraModel
      */
     public function getChuva7Dias(string $local = '1'): array
     {
-        return $this->cache->remember("chuva_7dias_v3_{$local}", $this->ttlRapido, function () use ($local) {
+        return $this->cache->remember("chuva_7dias_v4_{$local}", $this->ttlRapido, function () use ($local) {
+            $inicio = date('Y-m-d', strtotime('-6 days'));
+            $hoje = date('Y-m-d');
+            $chuva = $this->chuvaIncrementosPorDia($local, $inicio, $hoje);
             $results = $this->db->rawQuery(
-                "SELECT data_leitura AS data,
-                        MAX(rain) / 10 AS mm,
+                "SELECT DATE(created_at) AS data,
                         DATE_FORMAT(MAX(CASE WHEN rainrate > 0 THEN created_at END), '%H:%i') as ultima_hora
                  FROM leituras_completas
-                 WHERE local = ? AND created_at >= DATE_SUB(CURDATE(), INTERVAL 6 DAY)
-                 GROUP BY data_leitura
-                 ORDER BY data DESC",
-                [$local]
+                 WHERE local = ? AND created_at >= ?
+                 GROUP BY DATE(created_at)",
+                [$local, "{$inicio} 00:00:00"]
             );
+            foreach ($results as &$row) {
+                $d = $row['data'];
+                $row['mm'] = ($chuva[$d] ?? 0) / 10; // correções manuais entram mais abaixo
+            }
+            unset($row);
 
             // Garante 7 dias consecutivos
             $dias = [];
@@ -139,7 +268,7 @@ class LeituraModel
             }
 
             foreach ($dias as $d => $info) {
-                $dias[$d]['mm'] = number_format($info['mm_raw'], 2, ',', '.');
+                $dias[$d]['mm'] = number_format(max(0, $info['mm_raw']), 2, ',', '.');
                 unset($dias[$d]['mm_raw']);
             }
 
@@ -428,12 +557,15 @@ class LeituraModel
     public function getMedidasDoDia(string $local, string $dia): array
     {
         $ttl = $dia < date('Y-m-d') ? 2592000 : $this->getTtlHistorico();
-        return $this->cache->remember("medidas_dia_v1_{$local}_{$dia}", $ttl, function () use ($local, $dia) {
+        return $this->cache->remember("medidas_dia_v3_{$local}_{$dia}", $ttl, function () use ($local, $dia) {
             $fimDia = "{$dia} 23:59:59";
             // vai até a 1ª hora do dia seguinte só pra última leitura do dia ter a "leitura seguinte" do ET
             $fimJanela = date('Y-m-d 00:59:59', strtotime("{$dia} +1 day"));
             $rows = $this->db->rawQuery(
                 "SELECT HOUR(created_at) AS h,
+                        MIN(temp) AS tmin, MAX(temp) AS tmax, AVG(temp) AS tavg,
+                        SUBSTRING_INDEX(GROUP_CONCAT(IF(temp IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY temp ASC, created_at ASC), ',', 1) AS htmin,
+                        SUBSTRING_INDEX(GROUP_CONCAT(IF(temp IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY temp DESC, created_at ASC), ',', 1) AS htmax,
                         MIN(NULLIF(hum, 0)) AS hmin, MAX(NULLIF(hum, 0)) AS hmax, AVG(NULLIF(hum, 0)) AS havg,
                         SUBSTRING_INDEX(GROUP_CONCAT(IF(NULLIF(hum, 0) IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY hum ASC, created_at ASC), ',', 1) AS hhmin,
                         SUBSTRING_INDEX(GROUP_CONCAT(IF(NULLIF(hum, 0) IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY hum DESC, created_at ASC), ',', 1) AS hhmax,
@@ -442,7 +574,7 @@ class LeituraModel
                         SUBSTRING_INDEX(GROUP_CONCAT(IF(b IS NULL, NULL, DATE_FORMAT(created_at, '%H:%i')) ORDER BY b DESC, created_at ASC), ',', 1) AS hbmax,
                         SUM(et * diff_seg / 36000) AS et_mm, SUM(et IS NOT NULL) AS et_n
                  FROM (
-                     SELECT created_at, hum, et,
+                     SELECT created_at, hum, et, temp,
                             IF(bar > 0 AND created_at >= ?, bar, NULL) AS b,
                             TIMESTAMPDIFF(SECOND, created_at, LEAD(created_at) OVER (ORDER BY created_at)) AS diff_seg
                      FROM leituras_completas FORCE INDEX (idx_resumo)
@@ -457,6 +589,12 @@ class LeituraModel
             $horas = [];
             foreach ($rows as $r) {
                 $horas[(int) $r['h']] = [
+                    // temperatura em °C
+                    'tmin' => $r['tmin'] !== null ? (int) $r['tmin'] / 10 : null,
+                    'tmax' => $r['tmax'] !== null ? (int) $r['tmax'] / 10 : null,
+                    'tavg' => $r['tavg'] !== null ? (float) $r['tavg'] / 10 : null,
+                    'htmin' => $r['htmin'] ?: null,
+                    'htmax' => $r['htmax'] ?: null,
                     'hmin' => $r['hmin'] !== null ? (int) $r['hmin'] : null,
                     'hmax' => $r['hmax'] !== null ? (int) $r['hmax'] : null,
                     'havg' => $r['havg'] !== null ? (float) $r['havg'] : null,
@@ -724,11 +862,23 @@ class LeituraModel
     }
 
     /**
+     * Chuva da estação por dia em mm, já com as correções manuais: [Y-m-d => mm].
+     * automatic = '1' reaproveita getChuvaDiariaPeriodo (cache por mês, meses passados 24 h).
+     */
+    private function chuvaAutoPorDia(string $local, string $inicio, string $fim, string $automatic = '1'): array
+    {
+        if ($automatic === '1') {
+            return $this->getChuvaDiariaPeriodo($local, 'auto', $inicio, $fim);
+        }
+        return array_map(fn ($d) => $d / 10, $this->chuvaIncrementosPorDia($local, $inicio, $fim, $automatic));
+    }
+
+    /**
      * Busca chuva diária filtrada por tipo (manual/automático) para um mês ou ano específico.
      */
     public function getChuvaResumo(string $local, int $year, mixed $month, string $automatic = '1'): array
     {
-        $cacheKey = "chuva_resumo_{$local}_{$year}_{$month}_{$automatic}";
+        $cacheKey = "chuva_resumo_v2_{$local}_{$year}_{$month}_{$automatic}";
         return $this->cache->remember($cacheKey, $this->getTtlHistorico(), function () use ($local, $year, $month, $automatic) {
 
             if ($month === 'all') {
@@ -740,22 +890,11 @@ class LeituraModel
                 $totalAnual = 0;
                 $mesesNomes = [1 => 'Jan', 2 => 'Fev', 3 => 'Mar', 4 => 'Abr', 5 => 'Mai', 6 => 'Jun', 7 => 'Jul', 8 => 'Ago', 9 => 'Set', 10 => 'Out', 11 => 'Nov', 12 => 'Dez'];
 
-                $correcoesAno = $automatic === '1' ? $this->chuvaCorrecao->getMapaPeriodo($local, $start, $end) : [];
+                // Por dia (já com as correções), somado por mês
+                $diarios = $this->chuvaAutoPorDia($local, "{$year}-01-01", "{$year}-12-31", $automatic);
 
-                // Reagrupa por dia (com a data exata) pra poder aplicar as correções antes de somar o mês
-                $diarios = $this->db->rawQuery(
-                    "SELECT DATE(created_at) as dia, MONTH(created_at) as mes, MAX(rain) as max_chuva
-                     FROM leituras_completas FORCE INDEX (idx_chuva_auto)
-                     WHERE local = ? AND created_at BETWEEN ? AND ? AND automatic = ?
-                     GROUP BY dia
-                     ORDER BY dia",
-                    [$local, $start, $end, $automatic]
-                );
-
-                foreach ($diarios as $row) {
-                    $m = (int) $row['mes'];
-                    $dia = $row['dia'];
-                    $valor = (float) $row['max_chuva'] / 10 + ($correcoesAno[$dia] ?? 0);
+                foreach ($diarios as $dia => $valor) {
+                    $m = (int) substr($dia, 5, 2);
                     if (!isset($mensal[$m]))
                         $mensal[$m] = 0;
                     $mensal[$m] += $valor;
@@ -776,22 +915,11 @@ class LeituraModel
             $start = "{$year}-" . str_pad($month, 2, '0', STR_PAD_LEFT) . "-01 00:00:00";
             $end = date("Y-m-t 23:59:59", strtotime($start));
 
-            $results = $this->db->rawQuery(
-                "SELECT DATE(created_at) as data, MAX(rain) as max_chuva
-                 FROM leituras_completas FORCE INDEX (idx_chuva_auto)
-                 WHERE local = ? AND created_at BETWEEN ? AND ? AND automatic = ?
-                 GROUP BY DATE(created_at)
-                 ORDER BY data DESC",
-                [$local, $start, $end, $automatic]
-            );
-
-            $correcoesMes = $automatic === '1' ? $this->chuvaCorrecao->getMapaPeriodo($local, $start, $end) : [];
+            $results = array_reverse($this->chuvaAutoPorDia($local, substr($start, 0, 10), substr($end, 0, 10), $automatic), true);
 
             $dados = [];
             $totalMensal = 0;
-            foreach ($results as $row) {
-                $dia = $row['data'];
-                $valor = (float) $row['max_chuva'] / 10 + ($correcoesMes[$dia] ?? 0);
+            foreach ($results as $dia => $valor) {
                 $totalMensal += $valor;
                 $dados[] = [
                     'dia' => date('d/m/Y', strtotime($dia)),
@@ -874,7 +1002,7 @@ class LeituraModel
 
     /**
      * Chuva por dia (mm) num período, pra comparação entre meses/anos.
-     * $fonte: 'manual' (tabela chuva) ou 'auto' (estação, máx. do dia / 10 + correções,
+     * $fonte: 'manual' (tabela chuva) ou 'auto' (estação, soma dos incrementos do contador — ver chuvaIncrementosPorDia — + correções,
      * mesma regra do getChuvaResumo). Retorna ['Y-m-d' => mm].
      */
     public function getChuvaDiariaPeriodo(string $local, string $fonte, string $inicio, string $fim): array
@@ -907,17 +1035,11 @@ class LeituraModel
             $e = $cursor->format('Y-m-t 23:59:59');
             $ttl = $ym < $mesAtual ? 86400 : $this->getTtlHistorico();
 
-            $rows = $this->cache->remember("chuva_diaria_auto_{$local}_{$ym}", $ttl, function () use ($local, $s, $e) {
-                return $this->db->rawQuery(
-                    "SELECT DATE(created_at) as dia, MAX(rain) as max_chuva
-                     FROM leituras_completas FORCE INDEX (idx_chuva_auto)
-                     WHERE local = ? AND automatic = '1' AND created_at BETWEEN ? AND ?
-                     GROUP BY DATE(created_at)",
-                    [$local, $s, $e]
-                );
+            $rows = $this->cache->remember("chuva_diaria_auto_v2_{$local}_{$ym}", $ttl, function () use ($local, $s, $e) {
+                return $this->chuvaIncrementosPorDia($local, substr($s, 0, 10), substr($e, 0, 10));
             });
-            foreach ($rows as $row) {
-                $dias[$row['dia']] = (float) $row['max_chuva'] / 10;
+            foreach ($rows as $dia => $decimos) {
+                $dias[$dia] = $decimos / 10;
             }
             $cursor->modify('first day of next month');
         }
@@ -925,7 +1047,7 @@ class LeituraModel
         // Correções manuais (sem cache, pra refletir na hora o que o admin lançar)
         $correcoes = $this->chuvaCorrecao->getMapaPeriodo($local, "{$inicio} 00:00:00", "{$fim} 23:59:59");
         foreach ($dias as $dia => $valor) {
-            $dias[$dia] = $valor + ($correcoes[$dia] ?? 0);
+            $dias[$dia] = max(0, $valor + ($correcoes[$dia] ?? 0));
         }
 
         return array_filter($dias, fn ($dia) => $dia >= $inicio && $dia <= $fim, ARRAY_FILTER_USE_KEY);
@@ -1076,6 +1198,12 @@ class LeituraModel
             $fim = "{$year}-12-31";
         }
 
+        // Dia incompleto (estação sem dados em alguma hora): mínima/máxima são só do que foi medido;
+        // a previsão do INMET aparece ao lado, como referência (é previsão, não medição).
+        $previsoes = $this->getPrevisaoInmetPorDia($local, $inicio, $fim);
+        $horas = $this->getHorasComDadosPorDia($local, $inicio, $fim);
+        $hoje = date('Y-m-d');
+
         $final = [];
         foreach (array_reverse($this->getTemperaturaDiaria($local, $inicio, $fim), true) as $dia => $d) {
             $final[] = [
@@ -1084,6 +1212,9 @@ class LeituraModel
                 'hora_min' => $d['hmin'],
                 'temp_max' => number_format($d['tmax'], 1),
                 'hora_max' => $d['hmax'],
+                'incompleto' => $dia < $hoje && ($horas[$dia] ?? 0) < 24,
+                'horas_com_dados' => $horas[$dia] ?? 0,
+                'previsao_inmet' => $previsoes[$dia] ?? null,
             ];
         }
         return $final;
@@ -1094,7 +1225,7 @@ class LeituraModel
      */
     public function getEstatisticasChuva(string $local): array
     {
-        $cacheKey = "chuva_estatisticas_agri_{$local}";
+        $cacheKey = "chuva_estatisticas_agri_v2_{$local}";
         return $this->cache->remember($cacheKey, $this->getTtlHistorico(), function () use ($local) {
             // 1. Dias mais chuvosos (Top 5 histórico - Geral)
             $topChuva = $this->db->rawQuery(
@@ -1130,19 +1261,25 @@ class LeituraModel
                 }
             }
 
-            // 3. Status Atual (Dias sem chuva acumulada > 0 hoje)
-            $ultimaChuva = $this->db->rawQueryOne(
-                "SELECT created_at FROM leituras_completas
-                 WHERE local = ? AND rain > 0 AND automatic = '1'
-                 ORDER BY created_at DESC LIMIT 1",
-                [$local]
-            );
-            $dataUltimaSensor = $ultimaChuva ? new \DateTime($ultimaChuva['created_at']) : null;
+            // 3. Status Atual: último dia em que o contador da estação SUBIU de verdade (mesma regra
+            // dos incrementos). "rain > 0" não serve: o contador fica > 0 até zerar às 23h e volta
+            // com valor velho da memória depois de troca de pilha (23/11/2026).
+            $dataUltimaSensor = null;
+            $inicioPluviometro = substr(self::ATIVACAO_BAROMETRO, 0, 10);
+            $fimJanela = date('Y-m-d');
+            while (!$dataUltimaSensor && $fimJanela >= $inicioPluviometro) {
+                $iniJanela = max($inicioPluviometro, date('Y-m-d', strtotime("{$fimJanela} -89 days")));
+                $comChuva = array_filter($this->getChuvaDiariaPeriodo($local, 'auto', $iniJanela, $fimJanela), fn ($v) => $v > 0);
+                if ($comChuva) {
+                    $dataUltimaSensor = new \DateTime(array_key_last($comChuva) . ' 23:59:59');
+                }
+                $fimJanela = date('Y-m-d', strtotime("{$iniJanela} -1 day"));
+            }
 
-            // Considera também a correção manual mais recente com valor > 0
+            // Considera também a correção manual mais recente que SOMA chuva
             // (ex: dia em que o funil ficou entupido e o sensor não registrou nada)
             $ultimaCorrecao = $this->db->rawQueryOne(
-                "SELECT data FROM chuva_correcoes WHERE local = ? AND valor_mm > 0 ORDER BY data DESC LIMIT 1",
+                "SELECT data FROM chuva_correcoes WHERE local = ? AND valor_mm > 0 AND choveu = 1 ORDER BY data DESC LIMIT 1",
                 [$local]
             );
             $dataUltimaCorrecao = $ultimaCorrecao ? new \DateTime($ultimaCorrecao['data']) : null;

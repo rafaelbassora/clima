@@ -1,10 +1,11 @@
 <?php
 /**
- * Pesquisa "hora a hora em um dia" de umidade, pressão ou evapotranspiração.
- * Espera: $tipoDia ('umidade' | 'pressao' | 'et'), $dia, $primeiroDia, $medidasDia (LeituraModel::getMedidasDoDia),
+ * Pesquisa "hora a hora em um dia" de temperatura, umidade, pressão ou evapotranspiração.
+ * Espera: $tipoDia ('temperatura' | 'umidade' | 'pressao' | 'et'), $dia, $primeiroDia, $medidasDia (LeituraModel::getMedidasDoDia),
  *         $local, $month, $year.
  */
 $cfgDia = [
+    'temperatura' => ['titulo' => 'Temperatura', 'icone' => 'bi-thermometer-half', 'unidade' => '°C', 'campo' => 'tmin', 'casas' => 1],
     'umidade' => ['titulo' => 'Umidade', 'icone' => 'bi-droplet-fill', 'unidade' => '%', 'campo' => 'hmin', 'casas' => 0],
     'pressao' => ['titulo' => 'Pressão', 'icone' => 'bi-speedometer2', 'unidade' => 'hPa', 'campo' => 'bmin', 'casas' => 1],
     'et'      => ['titulo' => 'Evapotranspiração', 'icone' => 'bi-moisture', 'unidade' => 'mm', 'campo' => 'et', 'casas' => 2],
@@ -12,6 +13,20 @@ $cfgDia = [
 $fmtDia = fn ($v, $casas = null) => $v === null ? '—' : number_format($v, $casas ?? $cfgDia['casas'], ',', '.');
 $horasDia = array_filter($medidasDia, fn ($h) => $h[$cfgDia['campo']] !== null);
 $hojeDia = date('Y-m-d');
+
+// Dia incompleto: horas (de um dia já encerrado) em que a estação não mandou nenhuma leitura.
+// Faixas contínuas, ex.: [[8, 23]] = das 08:00 às 23:59.
+$faixasSemDados = [];
+if ($dia < $hojeDia && $medidasDia) {
+    $inicioFaixa = null;
+    for ($hh = 0; $hh <= 24; $hh++) {
+        $falta = $hh < 24 && !isset($medidasDia[$hh]);
+        if ($falta && $inicioFaixa === null) { $inicioFaixa = $hh; }
+        if (!$falta && $inicioFaixa !== null) { $faixasSemDados[] = [$inicioFaixa, $hh - 1]; $inicioFaixa = null; }
+    }
+}
+$horasSemDados = array_sum(array_map(fn ($f) => $f[1] - $f[0] + 1, $faixasSemDados));
+$previsaoDia = $previsaoDia ?? null; // só a temperatura recebe (previsão do INMET)
 $linkMedidaDia = fn ($d) => '?' . http_build_query(['local' => $local, 'month' => $month, 'year' => $year, 'dia' => $d]) . '#medida-dia';
 
 // resumo do dia
@@ -29,7 +44,7 @@ if ($horasDia) {
             ['Horas com registro', count($horasDia) . ' <small class="fs-6 fw-normal">de 24</small>', null, ''],
         ];
     } else {
-        $p = $tipoDia === 'umidade' ? 'h' : 'b';
+        $p = ['temperatura' => 't', 'umidade' => 'h'][$tipoDia] ?? 'b';
         $min = null; $max = null;
         foreach ($horasDia as $h) {
             if ($min === null || $h[$p . 'min'] < $min[$p . 'min']) { $min = $h; }
@@ -42,7 +57,7 @@ if ($horasDia) {
             ['Máxima', $fmtDia($max[$p . 'max']) . $u, 'às ' . htmlspecialchars($max['h' . $p . 'max'] ?? '--:--'), 'text-accent-warm'],
             $tipoDia === 'umidade'
                 ? ['Média do dia', $fmtDia(array_sum($medias) / count($medias)) . $u, null, '']
-                : ['Variação no dia', $fmtDia($max['bmax'] - $min['bmin']) . $u, 'diferença entre máxima e mínima', ''],
+                : ['Variação no dia', $fmtDia($max[$p . 'max'] - $min[$p . 'min']) . $u, 'diferença entre máxima e mínima', ''],
         ];
     }
 }
@@ -73,7 +88,20 @@ if ($horasDia) {
                 </div>
             </form>
 
-            <h5 class="h6 fw-bold mb-3"><?= date('d/m/Y', strtotime($dia)) ?><?= $dia === $hojeDia ? ' <span class="badge bg-primary bg-opacity-10 text-primary">hoje, até agora</span>' : '' ?></h5>
+            <h5 class="h6 fw-bold mb-3"><?= date('d/m/Y', strtotime($dia)) ?><?= $dia === $hojeDia ? ' <span class="badge bg-primary bg-opacity-10 text-primary">hoje, até agora</span>' : '' ?><?= $faixasSemDados ? ' <span class="badge bg-secondary fw-normal">dia incompleto</span>' : '' ?></h5>
+
+            <?php if ($faixasSemDados): ?>
+                <div class="alert alert-secondary small py-2 mb-3" role="note">
+                    <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
+                    <strong>Dia incompleto:</strong> a estação ficou sem dados
+                    <?= implode(', ', array_map(fn ($f) => sprintf('das %02d:00 às %02d:59', $f[0], $f[1]), $faixasSemDados)) ?>
+                    (<?= $horasSemDados ?> de 24 horas). Os valores abaixo são só do período medido.
+                    <?php if ($previsaoDia): ?>
+                        <br>Para referência, a <strong>previsão</strong> do INMET para este dia era
+                        máxima <?= (int) $previsaoDia['max'] ?> °C e mínima <?= (int) $previsaoDia['min'] ?> °C (previsão, não medição).
+                    <?php endif; ?>
+                </div>
+            <?php endif; ?>
 
             <?php if (!$horasDia): ?>
                 <p class="text-muted text-center py-4 mb-0">Não há registros de <?= mb_strtolower($cfgDia['titulo']) ?> neste dia.</p>
@@ -114,7 +142,7 @@ if ($horasDia) {
                                 <?php if ($tipoDia === 'et'): $acumulado += $h['et']; ?>
                                     <td class="fw-bold text-success"><?= $fmtDia($h['et']) ?> <small>mm</small></td>
                                     <td><?= $fmtDia($acumulado) ?> <small>mm</small></td>
-                                <?php else: $p = $tipoDia === 'umidade' ? 'h' : 'b'; ?>
+                                <?php else: $p = ['temperatura' => 't', 'umidade' => 'h'][$tipoDia] ?? 'b'; ?>
                                     <td><?= $fmtDia($h[$p . 'avg']) ?> <small><?= $cfgDia['unidade'] ?></small></td>
                                     <td class="text-primary"><?= $fmtDia($h[$p . 'min']) ?> <small><?= $cfgDia['unidade'] ?></small></td>
                                     <td class="text-accent-warm fw-bold"><?= $fmtDia($h[$p . 'max']) ?> <small><?= $cfgDia['unidade'] ?></small></td>
@@ -143,6 +171,8 @@ if ($horasDia) {
                 <p class="small text-muted mb-0 mt-2">
                     <?php if ($tipoDia === 'et'): ?>
                         Evapotranspiração: quantidade de água (em mm) que o solo e as plantas perderam para o ar em cada hora.
+                    <?php elseif ($tipoDia === 'temperatura'): ?>
+                        Temperatura do ar medida pela estação, agrupada por hora (média, mínima e máxima de cada hora).
                     <?php elseif ($tipoDia === 'pressao'): ?>
                         Variação: diferença entre a média da hora e a da hora anterior. Queda contínua costuma indicar chegada de frente ou chuva.
                     <?php else: ?>

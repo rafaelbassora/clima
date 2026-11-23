@@ -25,8 +25,23 @@ class TemperaturaController extends Controller
             ? (new ComparacaoTemperaturaService($model))->mediasDoPeriodo($local, $year, $month, $primeiroDia)
             : ['resumo' => null, 'geral' => null, 'anos' => null];
 
+        // Pesquisa "hora a hora em um dia" (?dia=Y-m-d): data inválida volta pra hoje, limitada
+        // entre o 1º dia com temperatura e hoje (mesma regra das outras medidas).
+        $hoje = date('Y-m-d');
+        $primeiroDiaTemp = $primeiroDia ?? $hoje;
+        $dia = (string) $this->getParam('dia', $hoje);
+        $dt = \DateTime::createFromFormat('!Y-m-d', $dia);
+        if (!$dt || $dt->format('Y-m-d') !== $dia) {
+            $dia = $hoje;
+        }
+        $dia = max($primeiroDiaTemp, min($hoje, $dia));
+
         $data = [
             'pageTitle'         => 'Monitoramento de Temperatura',
+            'dia'               => $dia,
+            'primeiroDia'       => $primeiroDiaTemp,
+            'medidasDia'        => $model->getMedidasDoDia($local, $dia),
+            'previsaoDia'       => $model->getPrevisaoInmetPorDia($local, $dia, $dia)[$dia] ?? null,
             'medias'            => $medias,
             'local'             => $local,
             'year'              => $year,

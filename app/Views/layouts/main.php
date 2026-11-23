@@ -229,8 +229,13 @@ $parceiros = $config['parceiros'] ?? [];
             <?php if (!empty($parceiros)): ?>
             <div class="footer-logos">
                 <?php foreach ($parceiros as $parceiro): ?>
+                    <?php if (!empty($parceiro['url'])): ?>
+                    <a href="<?= htmlspecialchars($parceiro['url']) ?>" target="_blank" rel="noopener"
+                       title="<?= htmlspecialchars($parceiro['nome']) ?> (abre em nova aba)">
+                    <?php endif; ?>
                     <img src="<?= htmlspecialchars($parceiro['logo']) ?>"
                          alt="Logo <?= htmlspecialchars($parceiro['nome']) ?>" loading="lazy">
+                    <?php if (!empty($parceiro['url'])): ?></a><?php endif; ?>
                 <?php endforeach; ?>
             </div>
             <?php endif; ?>

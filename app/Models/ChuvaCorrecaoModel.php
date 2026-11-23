@@ -45,7 +45,8 @@ class ChuvaCorrecaoModel
      */
     private function efeitoLiquido(array $row): float
     {
-        $valor = (float) $row['valor_mm'];
+        // abs(): o sinal vem só do "choveu" (valor gravado negativo não pode inverter a correção).
+        $valor = abs((float) $row['valor_mm']);
         $sinal = ((int) $row['choveu']) === 0 ? -1 : 1;
 
         // Correção de dia inteiro (sem hora definida): sempre se aplica.

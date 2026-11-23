@@ -281,6 +281,7 @@ async function fetchClimaAtual(local) {
                 umid <= 20 ? ['ALERTA', 'text-danger'] :
                 umid <= 30 ? ['ATENÇÃO', 'text-ambar'] :
                 umid < 40  ? ['SECO', 'text-ambar'] :
+                umid < 50  ? ['MODERADA', 'text-primary'] :
                 umid <= 60 ? ['IDEAL', 'text-success'] :
                              ['ÚMIDO', 'text-primary'];
             
@@ -327,6 +328,14 @@ async function fetchClimaAtual(local) {
         const mobileDataHora = document.getElementById('mobile-data-hora');
         if (mobileDataHora && data.data_hora) {
             mobileDataHora.innerHTML = `<i class="bi bi-clock-history me-1"></i>${data.data_hora}`;
+        }
+
+        // Estação parada há 30 min ou mais: avisa e mostra desde quando
+        const avisoSemDados = document.getElementById('aviso-sem-dados');
+        if (avisoSemDados && data.sem_dados !== undefined) {
+            avisoSemDados.classList.toggle('d-none', !data.sem_dados);
+            const desde = document.getElementById('aviso-sem-dados-desde');
+            if (desde && data.data_hora) desde.textContent = data.data_hora;
         }
 
         if (updatedEl && data.atualizado) {

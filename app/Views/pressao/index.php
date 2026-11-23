@@ -153,7 +153,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                             <tbody>
                                 <?php foreach ($resumoMensal as $row): ?>
                                 <tr class="<?= ($row['max_num'] ?? 0) >= 1020 ? 'bg-danger bg-opacity-10' : (($row['min_num'] ?? 9999) <= 1005 ? 'bg-primary bg-opacity-10' : '') ?>">
-                                    <td class="small"><?php $iso = \DateTime::createFromFormat('!d/m/Y', $row['data'])->format('Y-m-d'); ?><a href="?<?= htmlspecialchars(http_build_query(['local' => $local, 'month' => $month, 'year' => $year, 'dia' => $iso])) ?>#medida-dia" title="Ver hora a hora deste dia"><?= htmlspecialchars($row['data']) ?></a></td>
+                                    <td class="small"><?php $olhoData = $row['data']; $olhoMedida = 'a pressão'; $olhoAncora = 'medida-dia'; require __DIR__ . '/../partials/olho-dia.php'; ?></td>
                                     <td class="text-primary fw-bold"><?= $row['min'] ?></td>
                                     <td class="text-accent-warm fw-bold"><?= $row['max'] ?></td>
                                 </tr>

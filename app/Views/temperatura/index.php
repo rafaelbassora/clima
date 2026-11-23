@@ -90,6 +90,10 @@ $tiles = $mr ? [
 </div>
 <?php endif; ?>
 
+<div class="row g-3 mb-4">
+    <?php $tipoDia = 'temperatura'; require __DIR__ . '/../partials/medida-do-dia.php'; ?>
+</div>
+
 <div class="weather-card fade-in-up">
     <div class="card-header-custom">
         <i class="bi bi-calendar3"></i>
@@ -110,7 +114,14 @@ $tiles = $mr ? [
                 <tbody>
                     <?php foreach ($temperaturaMensal as $row): ?>
                     <tr>
-                        <td class="ps-4"><?= htmlspecialchars($row['data']) ?></td>
+                        <td class="ps-4">
+                            <?php $olhoData = $row['data']; $olhoMedida = 'a temperatura'; $olhoAncora = 'medida-dia'; require __DIR__ . '/../partials/olho-dia.php'; ?>
+                            <?php if (!empty($row['incompleto']) && !empty($row['previsao_inmet'])): ?>
+                                <small class="d-block text-muted" title="Previsão do INMET para o dia (não é medição), só como referência porque a estação ficou sem dados em parte do dia">
+                                    Previsão INMET: máx <?= (int) $row['previsao_inmet']['max'] ?>° / mín <?= (int) $row['previsao_inmet']['min'] ?>°
+                                </small>
+                            <?php endif; ?>
+                        </td>
                         <td class="text-center">
                             <div class="d-flex flex-column">
                                 <span class="fw-bold text-primary fs-5"><?= $row['temp_min'] ?>°C</span>
@@ -129,6 +140,13 @@ $tiles = $mr ? [
                 </tbody>
             </table>
         </div>
+        <?php if (array_filter(array_column($temperaturaMensal, 'incompleto'))): ?>
+            <p class="small text-muted mb-0 px-3 py-2">
+                <span class="badge bg-secondary fw-normal">incompleto</span>
+                a estação ficou sem dados em parte do dia: mínima e máxima são só do período medido.
+                A previsão do INMET aparece só como referência (é previsão, não medição).
+            </p>
+        <?php endif; ?>
     </div>
 </div>
 

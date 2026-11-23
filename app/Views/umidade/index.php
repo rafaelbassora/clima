@@ -92,7 +92,7 @@ $localNome = $local == '1' ? 'Sede' : 'Zona Rural';
                         <tbody>
                             <?php foreach ($resumoMensal as $row): ?>
                             <tr>
-                                <td><?php $iso = \DateTime::createFromFormat('!d/m/Y', $row['data'])->format('Y-m-d'); ?><a href="?<?= htmlspecialchars(http_build_query(['local' => $local, 'month' => $month, 'year' => $year, 'dia' => $iso])) ?>#medida-dia" title="Ver hora a hora deste dia"><?= htmlspecialchars($row['data']) ?></a></td>
+                                <td><?php $olhoData = $row['data']; $olhoMedida = 'a umidade'; $olhoAncora = 'medida-dia'; require __DIR__ . '/../partials/olho-dia.php'; ?></td>
                                 <td class="text-primary"><?= htmlspecialchars($row['min']) ?>%</td>
                                 <td class="text-accent-warm fw-bold"><?= htmlspecialchars($row['max']) ?>%</td>
                             </tr>

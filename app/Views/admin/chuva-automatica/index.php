@@ -45,6 +45,7 @@
                     <label class="form-label small fw-bold">Valor (mm)</label>
                     <input type="text" name="valor_mm" class="form-control" placeholder="0,00" required>
                     <div class="form-text small">
+                        Digite o valor <strong>sem sinal</strong> (ex.: 31,8).
                         Se "Choveu" estiver <strong>marcado</strong>: mm a somar.
                         Se <strong>desmarcado</strong>: mm a subtrair (corrige falso positivo do sensor).
                     </div>

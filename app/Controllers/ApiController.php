@@ -53,6 +53,7 @@ class ApiController extends Controller
                 'nowcasting'  => $model->getLatestNowcasting($local),
                 'data_hora'   => $leitura['data_hora'] ?? '',
                 'atualizado'  => $leitura['atualizado'] ?? '',
+                'sem_dados'   => $leitura['sem_dados'] ?? false,
                 'timestamp'   => date('Y-m-d H:i:s'),
             ]);
         } else {
@@ -258,6 +259,21 @@ class ApiController extends Controller
         // assim trocar a fonte de dados funciona na hora, sem precisar de outro cron.
         $this->executarSyncWunderground($local);
 
+        // Failover automático: estação local → Wunderground.
+        try {
+            $this->executarFailover($local);
+        } catch (\Throwable $e) {
+            error_log('Failover: ' . $e->getMessage());
+        }
+
+        // E também vigiar a estação: e-mail pros admins se ficar 30 min sem dados, quando voltar
+        // e se informar bateria baixa. Falha aqui nunca pode derrubar o circuit-breaker.
+        try {
+            (new \App\Services\MonitorEstacaoService($local))->verificar();
+        } catch (\Throwable $e) {
+            error_log('MonitorEstacao: ' . $e->getMessage());
+        }
+
         $model = new LeituraModel();
 
         $atual = $model->getUltimaLeitura($local);
@@ -323,12 +339,12 @@ class ApiController extends Controller
      * circuit-breaker (que já roda a cada 1 min via cron) — assim trocar a fonte
      * pelo admin funciona na hora, sem precisar cadastrar mais uma linha de cron.
      */
-    private function executarSyncWunderground(string $local = '1'): array
+    private function executarSyncWunderground(string $local = '1', bool $failover = false): array
     {
         $configModel = new \App\Models\EstacaoConfigModel();
         $config = $configModel->getConfig();
 
-        if ($config['fonte_dados'] !== 'wunderground') {
+        if ($config['fonte_dados'] !== 'wunderground' && !$failover) {
             return ['success' => true, 'acao' => 'nenhuma (fonte atual: local)'];
         }
 
@@ -359,6 +375,32 @@ class ApiController extends Controller
             $configModel->registrarSincronizacao(false, $e->getMessage());
             return ['success' => false, 'message' => $e->getMessage(), 'codigo' => 500];
         }
+    }
+
+    /** Minutos sem leitura local (receptor) antes de tentar o Wunderground. */
+    private const FAILOVER_WU_MIN = 5;
+
+    /**
+     * Failover, chamado a cada minuto pelo circuit-breaker:
+     *  1) estação local (receptor do DNS spoofing) — normal;
+     *  2) local parada há FAILOVER_WU_MIN → Wunderground (é a mesma estação por outro caminho:
+     *     cobre falha de rede/DNS entre a estação e o servidor, não estação desligada).
+     * Nada é estimado: se a estação parou de verdade, o período fica como falha ("dia incompleto").
+     * Volta sozinho: quando a estação manda dado de novo, a condição deixa de valer.
+     */
+    private function executarFailover(string $local): array
+    {
+        $row = $GLOBALS['db']->rawQueryOne(
+            "SELECT created_at FROM leituras_completas
+             WHERE local = ? AND (wid IS NULL OR wid <> 'Wunderground') ORDER BY created_at DESC LIMIT 1",
+            [$local]
+        );
+        $semLocal = $row ? (int) floor((time() - strtotime($row['created_at'])) / 60) : null;
+        if ($semLocal !== null && $semLocal < self::FAILOVER_WU_MIN) {
+            return ['acao' => 'nenhuma (estação local ok)'];
+        }
+
+        return ['acao' => 'wunderground', 'wunderground' => $this->executarSyncWunderground($local, true)];
     }
 
     /**

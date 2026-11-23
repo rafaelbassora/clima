@@ -632,7 +632,8 @@ class AdminController extends Controller
             $data = $_POST['data'] ?? date('Y-m-d');
             $hora = trim($_POST['hora'] ?? '') ?: null;
             $choveu = isset($_POST['choveu']);
-            $valor = (float) str_replace(',', '.', $_POST['valor_mm'] ?? '0');
+            // Sinal vem só do "Choveu?" — digitar -31,8 com "Choveu" desmarcado virava +31,8 (menos com menos).
+            $valor = abs((float) str_replace(',', '.', $_POST['valor_mm'] ?? '0'));
             $obs = trim($_POST['obs'] ?? '') ?: null;
 
             $this->chuvaCorrecaoModel->salvar($local, $data, $valor, $obs, $hora, $choveu);
@@ -817,6 +818,7 @@ class AdminController extends Controller
                 'title' => 'Fonte de Dados da Estação',
                 'activeMenu' => 'estacao',
                 'estacaoConfig' => $configModel->getConfig(),
+                'monitor' => (new \App\Services\MonitorEstacaoService('1'))->status(),
                 'erro' => $erro,
             ], 'admin');
             return;
@@ -826,6 +828,7 @@ class AdminController extends Controller
             'title' => 'Fonte de Dados da Estação',
             'activeMenu' => 'estacao',
             'estacaoConfig' => $configModel->getConfig(),
+            'monitor' => (new \App\Services\MonitorEstacaoService('1'))->status(),
         ], 'admin');
     }
 

@@ -25,6 +25,13 @@ $localNome = match($local) {
     </div>
 </div>
 
+<!-- Estação parada há 30 min ou mais (atualizado também por app.js) -->
+<div id="aviso-sem-dados" class="alert alert-warning small py-2 px-3 mb-3<?= empty($ultimaLeitura['sem_dados']) ? ' d-none' : '' ?>" role="status">
+    <i class="bi bi-exclamation-triangle-fill me-1"></i>
+    <strong>Estação sem dados desde <span id="aviso-sem-dados-desde"><?= htmlspecialchars($ultimaLeitura['data_hora'] ?? '') ?></span>.</strong>
+    Os valores abaixo são da última leitura recebida; atualizam sozinhos quando a estação voltar.
+</div>
+
 <!-- Forecast Banner -->
 <div class="forecast-banner fade-in-up">
     <div class="forecast-info-main">
@@ -93,7 +100,7 @@ $localNome = match($local) {
             <strong id="home-sensacao" class="text-accent-warm"><?= number_format($ultimaLeitura['sensacao'] ?? 0, 1, ',', '.') ?>°C</strong>
         </div>
         <?php
-            // Faixas: Defesa Civil/CGE (atenção ≤ 30%, alerta ≤ 20%, emergência ≤ 12%) e 40–60% como faixa saudável.
+            // Faixas: Defesa Civil/CGE (atenção ≤ 30%, alerta ≤ 20%, emergência ≤ 12%) e 50–60% como ideal (OMS).
             // Mesma regra em public/js/app.js (classificarUmidade) — mudar nos dois.
             $umid = $ultimaLeitura['umidade'] ?? 0;
             [$umidStatus, $umidColor] = match (true) {
@@ -101,6 +108,7 @@ $localNome = match($local) {
                 $umid <= 20 => ['ALERTA', 'text-danger'],
                 $umid <= 30 => ['ATENÇÃO', 'text-ambar'],
                 $umid < 40  => ['SECO', 'text-ambar'],
+                $umid < 50  => ['MODERADA', 'text-primary'],
                 $umid <= 60 => ['IDEAL', 'text-success'],
                 default     => ['ÚMIDO', 'text-primary'],
             };

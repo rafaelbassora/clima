@@ -35,10 +35,10 @@ return [
         'footer_aviso'    => 'CHANGE_ME', // Aviso legal/institucional no rodapé
     ],
 
-    // Parceiros institucionais exibidos no rodapé (logo relativo a /public).
+    // Parceiros institucionais exibidos no rodapé (logo relativo a /public; url opcional = link em nova aba).
     // Pode deixar como array vazio [] se não houver parceiros.
     'parceiros' => [
-        // ['nome' => 'Nome do Parceiro', 'logo' => '/img/logo-parceiro.png'],
+        // ['nome' => 'Nome do Parceiro', 'logo' => '/img/logo-parceiro.png', 'url' => 'https://site-do-parceiro.gov.br/'],
     ],
 
     // SEO

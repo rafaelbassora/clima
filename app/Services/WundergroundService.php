@@ -38,6 +38,11 @@ class WundergroundService
             throw new \RuntimeException("Resposta da API do Wunderground sem dados de observação.");
         }
 
+        // Observação velha (estação parada) não pode virar leitura nova com a hora de agora.
+        if (isset($obs['epoch']) && time() - (int) $obs['epoch'] > 20 * 60) {
+            throw new \RuntimeException('Wunderground só tem observação antiga (' . date('d/m H:i', (int) $obs['epoch']) . ').');
+        }
+
         $m = $obs['metric'];
 
         $tempRaw = $this->escalar($m['temp'] ?? null, 10);

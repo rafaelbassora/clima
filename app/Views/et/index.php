@@ -82,7 +82,7 @@
                             <?php if ($month === 'all'): ?>
                                 <strong><?= htmlspecialchars($row['mes_nome']) ?></strong>
                             <?php else: ?>
-                                <?php $iso = \DateTime::createFromFormat('!d/m/Y', $row['data'])->format('Y-m-d'); ?><a href="?<?= htmlspecialchars(http_build_query(['local' => $local, 'month' => $month, 'year' => $year, 'dia' => $iso])) ?>#medida-dia" title="Ver hora a hora deste dia"><?= htmlspecialchars($row['data']) ?></a>
+                                <?php $olhoData = $row['data']; $olhoMedida = 'a evapotranspiração'; $olhoAncora = 'medida-dia'; require __DIR__ . '/../partials/olho-dia.php'; ?>
                             <?php endif; ?>
                         </td>
                         <td><strong class="text-success"><?= htmlspecialchars($row['total']) ?> mm</strong></td>
