@@ -174,11 +174,29 @@ class LeituraModel
         return array_filter($dias, fn ($dia) => $dia >= $inicio && $dia <= $fim, ARRAY_FILTER_USE_KEY);
     }
 
-    /** Dia (anterior a hoje) em que a estação ficou sem dados em alguma hora. */
+    /**
+     * Dia em que a estação ficou sem dados em alguma hora. Hoje conta só as horas que já terminaram
+     * (a hora em andamento não), ex.: hoje às 13:20 olha 00:00–12:59.
+     */
     public function diaIncompleto(string $local, string $dia): bool
     {
-        if ($dia >= date('Y-m-d')) {
+        $hoje = date('Y-m-d');
+        if ($dia > $hoje) {
             return false;
+        }
+        if ($dia === $hoje) {
+            $horaAtual = (int) date('G');
+            if ($horaAtual === 0) {
+                return false;
+            }
+            $n = $this->cache->remember("horas_hoje_v1_{$local}_{$dia}_{$horaAtual}", $this->getTtlHistorico(), function () use ($local, $dia, $horaAtual) {
+                return (int) ($this->db->rawQueryOne(
+                    "SELECT COUNT(DISTINCT HOUR(created_at)) AS n FROM leituras_completas
+                     WHERE local = ? AND created_at BETWEEN ? AND ?",
+                    [$local, "{$dia} 00:00:00", sprintf('%s %02d:59:59', $dia, $horaAtual - 1)]
+                )['n'] ?? 0);
+            });
+            return $n < $horaAtual;
         }
         $mes = substr($dia, 0, 7);
         $horas = $this->getHorasComDadosPorDia($local, "{$mes}-01", date('Y-m-t', strtotime("{$mes}-01")));
@@ -1212,7 +1230,7 @@ class LeituraModel
                 'hora_min' => $d['hmin'],
                 'temp_max' => number_format($d['tmax'], 1),
                 'hora_max' => $d['hmax'],
-                'incompleto' => $dia < $hoje && ($horas[$dia] ?? 0) < 24,
+                'incompleto' => $dia < $hoje ? ($horas[$dia] ?? 0) < 24 : $this->diaIncompleto($local, $dia),
                 'horas_com_dados' => $horas[$dia] ?? 0,
                 'previsao_inmet' => $previsoes[$dia] ?? null,
             ];

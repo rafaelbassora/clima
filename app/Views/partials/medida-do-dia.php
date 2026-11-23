@@ -14,13 +14,14 @@ $fmtDia = fn ($v, $casas = null) => $v === null ? '—' : number_format($v, $cas
 $horasDia = array_filter($medidasDia, fn ($h) => $h[$cfgDia['campo']] !== null);
 $hojeDia = date('Y-m-d');
 
-// Dia incompleto: horas (de um dia já encerrado) em que a estação não mandou nenhuma leitura.
-// Faixas contínuas, ex.: [[8, 23]] = das 08:00 às 23:59.
+// Dia incompleto: horas já terminadas em que a estação não mandou nenhuma leitura (hoje: só até a
+// hora anterior à atual). Faixas contínuas, ex.: [[8, 23]] = das 08:00 às 23:59.
 $faixasSemDados = [];
-if ($dia < $hojeDia && $medidasDia) {
+$horasPassadas = $dia < $hojeDia ? 24 : ($dia === $hojeDia ? (int) date('G') : 0);
+if ($horasPassadas > 0 && $medidasDia) {
     $inicioFaixa = null;
-    for ($hh = 0; $hh <= 24; $hh++) {
-        $falta = $hh < 24 && !isset($medidasDia[$hh]);
+    for ($hh = 0; $hh <= $horasPassadas; $hh++) {
+        $falta = $hh < $horasPassadas && !isset($medidasDia[$hh]);
         if ($falta && $inicioFaixa === null) { $inicioFaixa = $hh; }
         if (!$falta && $inicioFaixa !== null) { $faixasSemDados[] = [$inicioFaixa, $hh - 1]; $inicioFaixa = null; }
     }
@@ -95,7 +96,7 @@ if ($horasDia) {
                     <i class="bi bi-exclamation-circle me-1" aria-hidden="true"></i>
                     <strong>Dia incompleto:</strong> a estação ficou sem dados
                     <?= implode(', ', array_map(fn ($f) => sprintf('das %02d:00 às %02d:59', $f[0], $f[1]), $faixasSemDados)) ?>
-                    (<?= $horasSemDados ?> de 24 horas). Os valores abaixo são só do período medido.
+                    (<?= $horasSemDados ?> de <?= $dia === $hojeDia ? $horasPassadas . ' horas até agora' : '24 horas' ?>). Os valores abaixo são só do período medido.
                     <?php if ($previsaoDia): ?>
                         <br>Para referência, a <strong>previsão</strong> do INMET para este dia era
                         máxima <?= (int) $previsaoDia['max'] ?> °C e mínima <?= (int) $previsaoDia['min'] ?> °C (previsão, não medição).
