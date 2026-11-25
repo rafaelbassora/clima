@@ -24,24 +24,41 @@ class ChuvaCorrecaoModel
     }
 
     /**
-     * Verifica se a estação já captou chuva de verdade (rainrate > 0) numa hora específica.
+     * Chuva (mm) que a própria estação mediu na 1 hora a partir de $hora, somando os
+     * incrementos do contador (mesmo critério do LeituraModel: ignora saltos > 5 mm
+     * numa leitura, que são reset/memória do console e não chuva).
      */
-    private function estacaoCaptouNaHora(string $local, string $data, string $hora): bool
+    private function chuvaEstacaoNaHora(string $local, string $data, string $hora): float
     {
         $inicio = "{$data} {$hora}:00";
         $fim = date('Y-m-d H:i:s', strtotime($inicio) + 3599);
 
-        $res = $this->db->rawQueryOne(
-            "SELECT COUNT(*) as total FROM leituras_completas
-             WHERE local = ? AND created_at BETWEEN ? AND ? AND rainrate > 0",
+        $rows = $this->db->rawQuery(
+            "SELECT rain FROM leituras_completas
+             WHERE local = ? AND created_at BETWEEN ? AND ? AND wid = 'Local'
+             ORDER BY created_at",
             [$local, $inicio, $fim]
         );
-        return ($res['total'] ?? 0) > 0;
+
+        $total = 0;
+        $anterior = null;
+        foreach ($rows as $r) {
+            $atual = (int) $r['rain'];
+            if ($anterior !== null) {
+                $delta = $atual - $anterior;
+                if ($delta > 0 && $delta <= 50) {
+                    $total += $delta;
+                }
+            }
+            $anterior = $atual;
+        }
+        return $total / 10;
     }
 
     /**
-     * Calcula o efeito líquido (mm) de uma correção, considerando se a estação
-     * já capturou chuva real naquela hora (nesse caso a correção é ignorada/sobreposta).
+     * Calcula o efeito líquido (mm) de uma correção. Correção com hora desconta o que a
+     * estação mediu naquela mesma hora (pra não somar em dobro), mas nunca é descartada
+     * inteira só porque a estação pegou umas gotas (funil entupido mede um fio d'água).
      */
     private function efeitoLiquido(array $row): float
     {
@@ -54,14 +71,16 @@ class ChuvaCorrecaoModel
             return $sinal * $valor;
         }
 
-        // Correção pontual de uma hora: se a estação já captou chuva real
-        // nessa mesma hora, a correção manual é sobreposta (ignorada).
-        $hora = substr($row['hora'], 0, 5);
-        if ($this->estacaoCaptouNaHora((string) $row['local'], (string) $row['data'], $hora)) {
-            return 0.0;
+        // Correção negativa (choveu = 0) não desconta nada: é o próprio ajuste de leitura falsa.
+        if ($sinal < 0) {
+            return $sinal * $valor;
         }
 
-        return $sinal * $valor;
+        // Correção com hora: desconta só o que a estação mediu nessa hora.
+        $hora = substr($row['hora'], 0, 5);
+        $medido = $this->chuvaEstacaoNaHora((string) $row['local'], (string) $row['data'], $hora);
+
+        return max(0.0, $valor - $medido);
     }
 
     /**

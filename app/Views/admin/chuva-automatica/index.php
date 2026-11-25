@@ -5,8 +5,8 @@
     <h2 class="h4 fw-bold mb-0">Corrigir Chuva Automática</h2>
     <p class="small text-muted mt-1 mb-0">
         Use isto quando o sensor da estação não captar toda a chuva de um dia (ex: funil entupido).
-        Informando a <strong>hora</strong>, se a estação voltar a captar chuva de verdade naquela mesma
-        hora, essa correção é automaticamente sobreposta (não soma em dobro). Deixando a hora em branco,
+        Informando a <strong>hora</strong>, o que a estação medir na hora seguinte a ela é descontado
+        da correção (não soma em dobro, mas a correção nunca some inteira). Deixando a hora em branco,
         a correção vale pro dia inteiro e sempre se soma. Pra corrigir um dia que já passou da meia-noite,
         é só escolher a data daquele dia. Dá pra lançar quantas correções quiser.
     </p>
